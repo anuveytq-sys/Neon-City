@@ -1,22 +1,9 @@
-/* Root-cause mobile orientation fix.
-   The game viewport is intentionally CSS-rotated on portrait devices. The touch HUD
-   must be counter-rotated so its DOM coordinate system matches the user's screen.
-   This keeps the existing main.js joystick math in the same coordinate space as the
-   visible joystick instead of applying a second, conflicting coordinate transform. */
-@media (orientation: portrait) and (max-width: 800px) and (pointer: coarse) {
-  #touch-controls {
-    transform: rotate(-90deg);
-    transform-origin: center center;
-  }
-}
-
-/* Never let the boot cover become an input-blocking black trap after startup. */
+/* Mobile boot guard only. The existing #app landscape fallback in style.css
+   rotates the complete interface as one unit. Do not counter-rotate the touch HUD. */
 #loading-screen.boot-complete {
-  display: none !important;
-  pointer-events: none !important;
+  display:none !important;
+  pointer-events:none !important;
 }
-
-/* Mobile render surface: avoid accidental browser interpolation/scaling artifacts. */
-@media (pointer: coarse) {
-  #game-root canvas { image-rendering: auto; }
+@media (pointer:coarse) {
+  #game-root canvas { image-rendering:auto; }
 }
