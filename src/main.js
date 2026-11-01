@@ -1,3 +1,4 @@
+import "./mobile-fix.js";
 import "./mobile-performance.js";
 import "./style.css";
 import "./mobile-orientation.css";
@@ -419,9 +420,13 @@ addEventListener("orientationchange",resizeGame,{passive:true});
 screen.orientation?.addEventListener?.("change",resizeGame);
 visualViewport?.addEventListener?.("resize",resizeGame,{passive:true});
 function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=stickVector.x!==0?stickVector.x:(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
+let lastEnergyDisplay=-1;
 const clock=new THREE.Clock();
 function update(dt,time){
-  fireCooldown=Math.max(0,fireCooldown-dt);playerState.energy=Math.min(100,playerState.energy+10*dt);updateVitals();
+  fireCooldown=Math.max(0,fireCooldown-dt);
+  playerState.energy=Math.min(100,playerState.energy+10*dt);
+  const energyDisplay=Math.ceil(playerState.energy);
+  if(energyDisplay!==lastEnergyDisplay){lastEnergyDisplay=energyDisplay;updateVitals();}
   enemies.forEach(enemy=>{
     if(!enemy.alive){enemy.defeat=Math.min(1,enemy.defeat+dt*1.8);enemy.group.scale.setScalar(Math.max(.01,1-enemy.defeat));enemy.group.rotation.z+=dt*2;return;}
     const distance=player.position.distanceTo(enemy.group.position);
