@@ -280,7 +280,9 @@ function solvePuzzle(item){
  item.solved=true;closePuzzle();showToast("SYSTEM OVERRIDE ACCEPTED");
  if(item.kind==="circuit"){gateOpen=true;gateGroup.userData.open=true;}
  if(item.kind==="sequence"){bridgeGroup.visible=true;lift.userData.active=true;if(!bridgeCollisionEnabled){platforms.push(...bridgeColliders);bridgeCollisionEnabled=true;}if(!liftCollisionEnabled){platforms.push(liftPlatform);liftCollisionEnabled=true;}}
- if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}\n if(item.kind==="laser"){cameras.forEach(camera=>camera.disabled=true);showToast("SECURITY CAMERAS OFFLINE");}\n if(item.kind==="timed"){powerNetworkOnline=true;generators.forEach(g=>g.scale.setScalar(1.25));showToast("POWER DISTRIBUTION RESTORED");}updateHUD();
+ if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}
+ if(item.kind==="laser"){cameras.forEach(camera=>camera.disabled=true);showToast("SECURITY CAMERAS OFFLINE");}
+ if(item.kind==="timed"){powerNetworkOnline=true;generators.forEach(g=>g.scale.setScalar(1.25));showToast("POWER DISTRIBUTION RESTORED");}updateHUD();
 }
 document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;if(puzzleTarget.kind==="timed"&&Date.now()>puzzleDeadline){puzzleProgress=0;puzzleDeadline=Date.now()+9000;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="TIMEOUT · SEQUENCE RESET · 9 SECONDS";return;}const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
 document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
@@ -348,7 +350,8 @@ function restart(){
  lift.userData.active=false;lift.position.y=-.1;liftPlatform.minY=-.32;liftPlatform.maxY=.12;
  hiddenDoor.userData.open=false;hiddenDoor.position.y=1.4;hiddenPanel.visible=true;
  extraFragments.forEach(f=>{f.taken=false;f.mesh.visible=true;});sideMissionState="available";sideMissionTime=0;sideMissionCount=0;
- enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.attack=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});\n cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
+ enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.attack=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});
+ cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
  shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
  puzzlePanel.classList.add("hidden");puzzleTarget=null;playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
