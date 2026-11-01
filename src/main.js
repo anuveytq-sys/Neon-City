@@ -17,10 +17,12 @@ const isTouch = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoi
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x080d20);
 scene.fog = new THREE.FogExp2(0x080d20, 0.014);
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 500);
+function gameViewport(){const rotateViewport=isTouch&&innerHeight>innerWidth&&innerWidth<=800;return rotateViewport?{width:innerHeight,height:innerWidth}:{width:innerWidth,height:innerHeight};}
+const initialViewport=gameViewport();
+const camera = new THREE.PerspectiveCamera(62, initialViewport.width / initialViewport.height, 0.1, 500);
 const renderer = new THREE.WebGLRenderer({ antialias: !isTouch, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(initialViewport.width, initialViewport.height);
 renderer.shadowMap.enabled = !isTouch;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -131,7 +133,8 @@ function respawn(){playerState.x=playerState.checkpoint.x;playerState.z=playerSt
 let toastTimer;
 function showToast(text){toast.textContent=text;toast.style.opacity="1";clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity="0",1400);}
 function updateHUD(){coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";progressFill.style.width=(playerState.cores/8*100)+"%";objective.textContent=playerState.cores===8?"Reach the glowing grid portal":"Collect the "+(8-playerState.cores)+" remaining energy cores";}
-function startGame(){title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;}
+async function requestLandscape(){try{if(screen.orientation?.lock)await screen.orientation.lock("landscape");}catch(_error){/* iOS Safari and some browsers use the CSS-rotated landscape fallback. */}}
+function startGame(){requestLandscape();title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;}
 function togglePause(force){if(!playerState.active)return;playerState.paused=force??!playerState.paused;pauseScreen.classList.toggle("hidden",!playerState.paused);}
 function restart(){playerState.cores=0;cores.forEach(c=>{c.active=true;c.group.visible=true;});playerState.checkpoint={x:0,z:1};respawn();updateHUD();startGame();}
 document.querySelector("#play-button").addEventListener("click",startGame);
@@ -139,7 +142,9 @@ document.querySelector("#pause-button").addEventListener("click",()=>togglePause
 document.querySelector("#resume-button").addEventListener("click",()=>togglePause(false));
 document.querySelector("#restart-button").addEventListener("click",restart);
 document.querySelector("#again-button").addEventListener("click",restart);
-addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,isTouch?1.5:2));});
+function resizeGame(){const viewport=gameViewport();camera.aspect=viewport.width/viewport.height;camera.updateProjectionMatrix();renderer.setSize(viewport.width,viewport.height);renderer.setPixelRatio(Math.min(devicePixelRatio,isTouch?1.5:2));}
+addEventListener("resize",resizeGame);
+addEventListener("orientationchange",()=>setTimeout(resizeGame,180));
 function axisInput(){const f=(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
 const clock=new THREE.Clock();
 function update(dt,time){
@@ -169,6 +174,4 @@ camera.position.set(0,6,11);camera.lookAt(0,1,-4);
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;update(dt,t);renderer.render(scene,camera);}
 animate();
 loading.classList.add("hidden");
-if(isTouch&&innerHeight>innerWidth)document.querySelector("#rotate-hint").classList.remove("hidden");
-addEventListener("orientationchange",()=>document.querySelector("#rotate-hint").classList.toggle("hidden",innerWidth>innerHeight));
 updateHUD();
