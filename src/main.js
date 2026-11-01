@@ -98,8 +98,10 @@ player.position.set(0,0,1);
 const cores=[];
 for(const [x,y,z] of [[-3,1.5,-9],[3,1.5,-17],[-4,2.2,-27],[4,1.7,-37],[-4,1.7,-49],[4,2.4,-62],[-4,1.7,-78],[0,2.2,-96]]){
   const g=new THREE.Group();g.position.set(x,y,z);world.add(g);
-  const gem=new THREE.Mesh(new THREE.OctahedronGeometry(.58,0),goldMat);gem.rotation.y=Math.PI/4;g.add(gem);
-  const aura=new THREE.Mesh(new THREE.TorusGeometry(.8,.035,8,24),cyanMat);aura.rotation.x=Math.PI/2;g.add(aura);
+  const gem=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.82,10),goldMat);gem.rotation.y=Math.PI/4;g.add(gem);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.09,10),cyanMat);cap.position.y=.45;g.add(cap);
+  const aura=new THREE.Mesh(new THREE.TorusGeometry(.58,.045,8,24),cyanMat);aura.rotation.x=Math.PI/2;g.add(aura);
+  const cellGlow=new THREE.Mesh(new THREE.BoxGeometry(.08,.52,.08),cyanMat);cellGlow.position.y=.02;g.add(cellGlow);
   const light=new THREE.PointLight(0xffc85a,8,5);g.add(light);cores.push({group:g,gem,active:true});
 }
 
@@ -215,14 +217,15 @@ function closePuzzle(){puzzlePanel.classList.add("hidden");playerState.paused=fa
 function solvePuzzle(item){
  item.solved=true;closePuzzle();showToast("SYSTEM OVERRIDE ACCEPTED");
  if(item.kind==="circuit"){gateOpen=true;gateGroup.userData.open=true;}
- if(item.kind==="sequence"){bridgeGroup.visible=true;lift.userData.active=true;}
- if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}
+ if(item.kind==="sequence"){bridgeGroup.visible=true;lift.userData.active=true;if(!bridgeCollisionEnabled){platforms.push(...bridgeColliders);bridgeCollisionEnabled=true;}if(!liftCollisionEnabled){platforms.push(liftPlatform);liftCollisionEnabled=true;}}
+ if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}updateHUD();
 }
 document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
 document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
 function tryInteract(){if(!playerState.active||playerState.paused)return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
-const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};platforms.push(liftPlatform);
-const bridgeColliders=bridgeParts.map((p,i)=>{const x=-4+i*2;const collider={minX:x-1.05,maxX:x+1.05,minY:-.18,maxY:.04,minZ:-61.1,maxZ:-58.9};platforms.push(collider);return collider;});
+const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};
+const bridgeColliders=bridgeParts.map((p,i)=>{const x=-4+i*2;return {minX:x-1.05,maxX:x+1.05,minY:-.18,maxY:.04,minZ:-61.1,maxZ:-58.9};});
+let bridgeCollisionEnabled=false,liftCollisionEnabled=false;
 
 // Input
 const keys=new Set(), touch=new Set();
@@ -237,10 +240,11 @@ document.querySelector("#interact-button").addEventListener("pointerdown",e=>{e.
 let cameraYaw=0, cameraPitch=.16, dragging=false,lastPointer=null;
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();if(e.key.toLowerCase()==="e")tryInteract();});
 addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
-renderer.domElement.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.clientX>innerWidth*.35){dragging=true;lastPointer={x:e.clientX,y:e.clientY};renderer.domElement.setPointerCapture?.(e.pointerId);}});
-addEventListener("pointerup",()=>{dragging=false;lastPointer=null;});
-addEventListener("pointercancel",()=>{dragging=false;lastPointer=null;});
-addEventListener("pointermove",e=>{if(dragging&&lastPointer&&playerState.active&&!playerState.paused){cameraYaw-= (e.clientX-lastPointer.x)*.005;cameraPitch=THREE.MathUtils.clamp(cameraPitch+(e.clientY-lastPointer.y)*.0025,-.12,.68);lastPointer={x:e.clientX,y:e.clientY};}});
+let touchMovePointer=null,touchMoveOrigin=null;
+function clearPointerControl(){dragging=false;lastPointer=null;touchMovePointer=null;touchMoveOrigin=null;stickVector={x:0,y:0};}
+renderer.domElement.addEventListener("pointerdown",e=>{if(!playerState.active||playerState.paused)return;const rect=renderer.domElement.getBoundingClientRect(),split=rect.left+rect.width*.52;if(e.pointerType==="touch"||e.pointerType==="pen"){renderer.domElement.setPointerCapture?.(e.pointerId);if(e.clientX<split){touchMovePointer=e.pointerId;touchMoveOrigin={x:e.clientX,y:e.clientY};stickVector={x:0,y:0};}else{dragging=true;lastPointer={x:e.clientX,y:e.clientY};}}else if(e.pointerType==="mouse"&&e.clientX>split){dragging=true;lastPointer={x:e.clientX,y:e.clientY};}});
+renderer.domElement.addEventListener("pointermove",e=>{if(touchMovePointer===e.pointerId&&touchMoveOrigin){const dx=e.clientX-touchMoveOrigin.x,dy=e.clientY-touchMoveOrigin.y,max=72,len=Math.hypot(dx,dy),scale=len>max?max/len:1;stickVector={x:dx*scale/max,y:dy*scale/max};}else if(dragging&&lastPointer&&playerState.active&&!playerState.paused){cameraYaw-=(e.clientX-lastPointer.x)*.005;cameraPitch=THREE.MathUtils.clamp(cameraPitch+(e.clientY-lastPointer.y)*.0025,-.12,.68);lastPointer={x:e.clientX,y:e.clientY};}});
+for(const ev of ["pointerup","pointercancel","lostpointercapture"]){renderer.domElement.addEventListener(ev,clearPointerControl);}
 function bindHold(button,action){button.addEventListener("pointerdown",e=>{e.preventDefault();touch.add(action);button.setPointerCapture?.(e.pointerId);});for(const ev of ["pointerup","pointercancel","lostpointercapture"])button.addEventListener(ev,()=>touch.delete(action));}
 document.querySelectorAll("[data-move]").forEach(b=>bindHold(b,b.dataset.move));
 const jumpButton=document.querySelector("#jump-button");
@@ -266,7 +270,7 @@ function findLanding(x,z,oldY,newY){
 function respawn(){playerState.x=playerState.checkpoint.x;playerState.z=playerState.checkpoint.z;playerState.y=playerState.checkpoint.y??0;playerState.vy=0;playerState.vx=0;playerState.vz=0;playerState.grounded=false;coyoteTimer=0;jumpBuffer=0;player.position.set(playerState.x,playerState.y,playerState.z);showToast("CHECKPOINT RESTORED");}
 let toastTimer;
 function showToast(text){toast.textContent=text;toast.style.opacity="1";clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity="0",1400);}
-function updateHUD(){coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";progressFill.style.width=(playerState.cores/8*100)+"%";objective.textContent=playerState.cores===8?"Reach the glowing grid portal":"Collect the "+(8-playerState.cores)+" remaining energy cores";}
+function updateHUD(){const restored=interactables.filter(item=>item.solved).length;coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";progressFill.style.width=((playerState.cores/8)*70+(restored/3)*30)+"%";objective.textContent=restored<3?"Restore city systems · "+restored+" / 3 networks online":playerState.cores<8?"Power cells secured · "+playerState.cores+" / 8":"All systems online · reach the extraction portal";}
 async function requestLandscape(){try{if(screen.orientation?.lock)await screen.orientation.lock("landscape");}catch(_error){/* iOS Safari and some browsers use the CSS-rotated landscape fallback. */}}
 function startGame(){requestLandscape();title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;}
 function togglePause(force){if(!playerState.active)return;playerState.paused=force??!playerState.paused;pauseScreen.classList.toggle("hidden",!playerState.paused);}
@@ -329,7 +333,7 @@ function update(dt,time){
   document.querySelector("#interact-button").classList.toggle("available",nearTerminal);
   if(lift.userData.active&&Math.abs(playerState.x-4)<1.8&&Math.abs(playerState.z+73)<1.8&&playerState.y<lift.position.y+.5){playerState.y=lift.position.y+.35;playerState.vy=Math.max(0,playerState.vy);}
 
-  if(playerState.cores===8&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
+  if(playerState.cores===8&&interactables.every(item=>item.solved)&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
   const followDistance=isTouch?8.2:9.2;
   const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);
   camera.position.lerp(target,1-Math.exp(-7*dt));camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);
