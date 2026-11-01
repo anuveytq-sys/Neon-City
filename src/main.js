@@ -248,20 +248,36 @@ function makeTerminal(x,z,label,kind,sequence){
 makeTerminal(-4,-23,"CIRCUIT ROUTER","circuit",[1,3,2]);
 makeTerminal(4,-55,"SECURITY CONSOLE","sequence",[2,1,3,2]);
 makeTerminal(-4,-82,"NETWORK SYNCHRONIZER","sync",[3,2,1,3]);
+makeTerminal(-5,-38,"LASER GRID CONTROLLER","laser",[3,1,2,1]);
+makeTerminal(5,-96,"TIMED POWER RELAY","timed",[2,3,1,2]);
 for(let i=0;i<3;i++){const gen=new THREE.Group();gen.position.set(i===0?-6:i===1?6:0,.2,-34-i*12);world.add(gen);const core=new THREE.Mesh(new THREE.CylinderGeometry(.55,.75,1.8,8),darkMat);gen.add(core);const coil=new THREE.Mesh(new THREE.TorusGeometry(.8,.08,8,24),i%2?pinkMat:cyanMat);coil.rotation.x=Math.PI/2;gen.add(coil);generators.push(gen);}
 const extraFragments=[];
 for(const [x,y,z] of [[-6,1.1,-14],[6,1.3,-44],[-6,1.4,-66],[6,1.2,-99]]){const shard=new THREE.Mesh(new THREE.IcosahedronGeometry(.34,0),pinkMat);shard.position.set(x,y,z);world.add(shard);extraFragments.push({mesh:shard,taken:false});}
-let puzzleTarget=null,puzzleProgress=0;
+let puzzleTarget=null,puzzleProgress=0,puzzleDeadline=0;
+const cameras=[];
+for(const [x,z] of [[-7,-29],[7,-63],[-7,-91]]){
+ const cameraUnit=new THREE.Group();cameraUnit.position.set(x,3.4,z);world.add(cameraUnit);
+ const mount=new THREE.Mesh(new THREE.BoxGeometry(.35,.55,.35),darkMat);mount.position.y=.25;cameraUnit.add(mount);
+ const head=new THREE.Mesh(new THREE.BoxGeometry(.8,.42,.55),mat(0x263b58));head.position.y=-.1;cameraUnit.add(head);
+ const lens=new THREE.Mesh(new THREE.SphereGeometry(.14,10,8),pinkMat);lens.position.set(0,-.1,-.3);cameraUnit.add(lens);
+ cameras.push({group:cameraUnit,disabled:false,alarm:0});
+}
+const inventoryItems=[];
+for(const [type,x,z] of [["card",6,-14],["upgrade",-6,-42],["recording",6,-68],["rare",0,-94]]){
+ const mesh=new THREE.Mesh(type==="card"?new THREE.BoxGeometry(.5,.08,.75):new THREE.IcosahedronGeometry(.34,1),type==="card"?goldMat:type==="upgrade"?cyanMat:type==="recording"?pinkMat:goldMat);
+ mesh.position.set(x,.85,z);world.add(mesh);inventoryItems.push({type,mesh,taken:false});
+}
+let powerNetworkOnline=false;
 const puzzlePanel=document.querySelector("#puzzle-panel"),puzzleTitle=document.querySelector("#puzzle-title"),puzzleStatus=document.querySelector("#puzzle-status");
-function openPuzzle(item){puzzleTarget=item;puzzleProgress=0;puzzleTitle.textContent=item.label;puzzleStatus.textContent="TRACE THE SIGNAL SEQUENCE";puzzlePanel.classList.remove("hidden");playerState.paused=true;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));}
+function openPuzzle(item){if(item.kind==="sync"&&playerState.inventory.cards<1){showToast("ACCESS CARD REQUIRED");return;}puzzleTarget=item;puzzleProgress=0;puzzleDeadline=item.kind==="timed"?Date.now()+9000:0;puzzleTitle.textContent=item.label;puzzleStatus.textContent=item.kind==="timed"?"TIME LIMIT · 9 SECONDS":"TRACE THE SIGNAL SEQUENCE";puzzlePanel.classList.remove("hidden");playerState.paused=true;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));}
 function closePuzzle(){puzzlePanel.classList.add("hidden");playerState.paused=false;puzzleTarget=null;}
 function solvePuzzle(item){
  item.solved=true;closePuzzle();showToast("SYSTEM OVERRIDE ACCEPTED");
  if(item.kind==="circuit"){gateOpen=true;gateGroup.userData.open=true;}
  if(item.kind==="sequence"){bridgeGroup.visible=true;lift.userData.active=true;if(!bridgeCollisionEnabled){platforms.push(...bridgeColliders);bridgeCollisionEnabled=true;}if(!liftCollisionEnabled){platforms.push(liftPlatform);liftCollisionEnabled=true;}}
- if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}updateHUD();
+ if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}\n if(item.kind==="laser"){cameras.forEach(camera=>camera.disabled=true);showToast("SECURITY CAMERAS OFFLINE");}\n if(item.kind==="timed"){powerNetworkOnline=true;generators.forEach(g=>g.scale.setScalar(1.25));showToast("POWER DISTRIBUTION RESTORED");}updateHUD();
 }
-document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
+document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;if(puzzleTarget.kind==="timed"&&Date.now()>puzzleDeadline){puzzleProgress=0;puzzleDeadline=Date.now()+9000;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="TIMEOUT · SEQUENCE RESET · 9 SECONDS";return;}const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
 document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
 function tryInteract(){if(!playerState.active||playerState.paused)return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
 const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};
@@ -312,7 +328,7 @@ function findLanding(x,z,oldY,newY){
 function respawn(){playerState.x=playerState.checkpoint.x;playerState.z=playerState.checkpoint.z;playerState.y=playerState.checkpoint.y??0;playerState.vy=0;playerState.vx=0;playerState.vz=0;playerState.grounded=false;coyoteTimer=0;jumpBuffer=0;player.position.set(playerState.x,playerState.y,playerState.z);showToast("CHECKPOINT RESTORED");}
 let toastTimer;
 function showToast(text){toast.textContent=text;toast.style.opacity="1";clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity="0",1400);}
-function updateHUD(){const restored=interactables.filter(item=>item.solved).length;coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";progressFill.style.width=((playerState.cores/8)*70+(restored/3)*30)+"%";objective.textContent=restored<3?"Restore city systems · "+restored+" / 3 networks online":playerState.cores<8?"Power cells secured · "+playerState.cores+" / 8":"All systems online · reach the extraction portal";}
+function updateHUD(){const restored=interactables.filter(item=>item.solved).length;coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";const inventoryLabel=document.querySelector("#inventory-count");if(inventoryLabel)inventoryLabel.textContent="CARD "+playerState.inventory.cards+" · MOD "+playerState.inventory.upgrades+" · LOG "+playerState.inventory.recordings+" · RARE "+playerState.inventory.rare;progressFill.style.width=((playerState.cores/8)*70+(restored/3)*30)+"%";objective.textContent=restored<3?"Restore city systems · "+restored+" / 3 networks online":playerState.cores<8?"Power cells secured · "+playerState.cores+" / 8":"All systems online · reach the extraction portal";}
 async function requestLandscape(){try{if(screen.orientation?.lock)await screen.orientation.lock("landscape");}catch(_error){/* iOS Safari and some browsers use the CSS-rotated landscape fallback. */}}
 function startGame(){requestLandscape();title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;}
 function togglePause(force){if(!playerState.active)return;playerState.paused=force??!playerState.paused;pauseScreen.classList.toggle("hidden",!playerState.paused);}
@@ -327,7 +343,7 @@ function restart(){
  lift.userData.active=false;lift.position.y=-.1;liftPlatform.minY=-.32;liftPlatform.maxY=.12;
  hiddenDoor.userData.open=false;hiddenDoor.position.y=1.4;hiddenPanel.visible=true;
  extraFragments.forEach(f=>{f.taken=false;f.mesh.visible=true;});
- enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});
+ enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.attack=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});\n cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
  shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
  puzzlePanel.classList.add("hidden");puzzleTarget=null;playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
@@ -400,11 +416,13 @@ function update(dt,time){
   cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
   drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){damagePlayer(10);d.group.position.set(d.baseX,1.4,d.baseZ);}});
   extraFragments.forEach(f=>{if(!f.taken&&player.position.distanceTo(f.mesh.position)<1.2){f.taken=true;f.mesh.visible=false;showToast("DATA FRAGMENT ACQUIRED");}});
+  inventoryItems.forEach(item=>{if(!item.taken&&player.position.distanceTo(item.mesh.position)<1.25){item.taken=true;item.mesh.visible=false;playerState.inventory[item.type==="card"?"cards":item.type==="upgrade"?"upgrades":item.type==="recording"?"recordings":"rare"]++;if(item.type==="upgrade")playerState.energy=Math.min(100,playerState.energy+35);showToast(({card:"ACCESS CARD ACQUIRED",upgrade:"BLASTER MOD ACQUIRED",recording:"MEMORY LOG RECOVERED",rare:"RARE DATA RELIC ACQUIRED"})[item.type]);updateHUD();updateVitals();}});
+  cameras.forEach(cameraUnit=>{cameraUnit.group.rotation.y=cameraUnit.disabled?0:Math.sin(time*.65+cameraUnit.group.position.z)*.55;if(!cameraUnit.disabled&&player.position.distanceTo(cameraUnit.group.position)<4&&cameraUnit.alarm<=0){damagePlayer(4);cameraUnit.alarm=2.5;}cameraUnit.alarm=Math.max(0,cameraUnit.alarm-dt);});
   let nearTerminal=false;for(const item of interactables){if(!item.solved&&player.position.distanceTo(item.group.position)<3.1)nearTerminal=true;}
   document.querySelector("#interact-button").classList.toggle("available",nearTerminal);
   if(lift.userData.active&&Math.abs(playerState.x-4)<1.8&&Math.abs(playerState.z+73)<1.8&&playerState.y<lift.position.y+.5){playerState.y=lift.position.y+.35;playerState.vy=Math.max(0,playerState.vy);}
 
-  if(playerState.cores===8&&interactables.every(item=>item.solved)&&enemies.every(enemy=>!enemy.alive)&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
+  if(playerState.cores===8&&interactables.every(item=>item.solved)&&enemies.every(enemy=>!enemy.alive)&&powerNetworkOnline&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
   const followDistance=isTouch?8.2:9.2;
   const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);
   camera.position.lerp(target,1-Math.exp(-7*dt));camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);
