@@ -94,6 +94,47 @@ for(const x of [-.25,.25]){const f=new THREE.Mesh(footGeo,mat(0x101827));f.posit
 const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,y:0,z:0},active:false,paused:false,won:false};
 player.position.set(0,0,1);
 
+// Phase 3 combat: non-graphic energy blaster, enemy health, cooldown and recharge.
+playerState.health=100;playerState.energy=100;playerState.inventory={cards:0,upgrades:0,recordings:0,rare:0};
+const enemies=[],shots=[];let fireCooldown=0;
+const blaster=new THREE.Group();blaster.position.set(.48,1.2,-.22);player.add(blaster);
+const blasterBody=new THREE.Mesh(new THREE.BoxGeometry(.18,.2,.62),darkMat);blaster.add(blasterBody);
+const blasterTip=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8),cyanMat);blasterTip.position.z=-.34;blaster.add(blasterTip);
+function createEnemy(type,x,z,hp=30){
+ const group=new THREE.Group();group.position.set(x,type==="turret"?.6:0,z);world.add(group);
+ const shell=new THREE.Mesh(type==="elite"?new THREE.BoxGeometry(1.5,2.2,1.2):new THREE.BoxGeometry(.9,1.35,.8),mat(type==="elite"?0x4a1e59:0x253b57,type==="elite"?0x8d1a9c:0x164e68));shell.position.y=type==="turret"?.45:.72;group.add(shell);
+ const eye=new THREE.Mesh(new THREE.BoxGeometry(.48,.14,.08),pinkMat);eye.position.set(0,type==="turret"?.65:1.05,-.43);group.add(eye);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(type==="elite"?1:.62,.045,8,20),type==="elite"?pinkMat:cyanMat);ring.rotation.x=Math.PI/2;ring.position.y=type==="turret"?.3:1.2;group.add(ring);
+ enemies.push({group,type,hp,maxHp:hp,alive:true,attack:0,phase:Math.random()*6.28,baseX:x,baseZ:z,defeat:0});
+ return group;
+}
+createEnemy("ground", -5,-34,35);createEnemy("ground",5,-66,40);
+createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
+function fireBlaster(){
+ if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
+ playerState.energy-=12;fireCooldown=.24;
+ const dir=new THREE.Vector3(Math.sin(player.rotation.y),0,-Math.cos(player.rotation.y)).normalize();
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),cyanMat);mesh.position.copy(player.position).add(new THREE.Vector3(0,1.35,0)).addScaledVector(dir,.9);world.add(mesh);
+ shots.push({mesh,velocity:dir.multiplyScalar(24),life:1.6,enemy:false});
+ updateVitals();
+}
+function spawnEnemyShot(enemy){
+ const direction=new THREE.Vector3(player.position.x-enemy.group.position.x,.25,player.position.z-enemy.group.position.z).normalize();
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(.16,8,6),pinkMat);mesh.position.copy(enemy.group.position).add(new THREE.Vector3(0,.8,0));world.add(mesh);
+ shots.push({mesh,velocity:direction.multiplyScalar(10),life:3,enemy:true});
+}
+function updateVitals(){
+ const healthFill=document.querySelector("#health-fill"),energyFill=document.querySelector("#energy-fill");
+ if(healthFill)healthFill.style.width=Math.max(0,playerState.health)+"%";
+ if(energyFill)energyFill.style.width=Math.max(0,playerState.energy)+"%";
+ const healthValue=document.querySelector("#health-value"),energyValue=document.querySelector("#energy-value");
+ if(healthValue)healthValue.textContent=Math.ceil(playerState.health);
+ if(energyValue)energyValue.textContent=Math.ceil(playerState.energy);
+}
+function damagePlayer(amount){if(!playerState.active||playerState.paused)return;playerState.health=Math.max(0,playerState.health-amount);updateVitals();showToast("SYSTEM INTEGRITY "+Math.ceil(playerState.health)+"%");if(playerState.health<=0){playerState.health=100;respawn();updateVitals();}}
+document.querySelector("#fire-button")?.addEventListener("pointerdown",e=>{e.preventDefault();fireBlaster();});
+
+
 // Energy cores.
 const cores=[];
 for(const [x,y,z] of [[-3,1.5,-9],[3,1.5,-17],[-4,2.2,-27],[4,1.7,-37],[-4,1.7,-49],[4,2.4,-62],[-4,1.7,-78],[0,2.2,-96]]){
@@ -248,6 +289,7 @@ for(const ev of ["pointerup","pointercancel","lostpointercapture"]){renderer.dom
 function bindHold(button,action){button.addEventListener("pointerdown",e=>{e.preventDefault();touch.add(action);button.setPointerCapture?.(e.pointerId);});for(const ev of ["pointerup","pointercancel","lostpointercapture"])button.addEventListener(ev,()=>touch.delete(action));}
 document.querySelectorAll("[data-move]").forEach(b=>bindHold(b,b.dataset.move));
 const jumpButton=document.querySelector("#jump-button");
+addEventListener("keydown",e=>{if(e.key.toLowerCase()==="f")fireBlaster();});
 let jumpQueued=false;jumpButton.addEventListener("pointerdown",e=>{e.preventDefault();jumpQueued=true;});
 
 // Phase 2 character controller: swept vertical landing, separate horizontal resolution,
@@ -274,7 +316,21 @@ function updateHUD(){const restored=interactables.filter(item=>item.solved).leng
 async function requestLandscape(){try{if(screen.orientation?.lock)await screen.orientation.lock("landscape");}catch(_error){/* iOS Safari and some browsers use the CSS-rotated landscape fallback. */}}
 function startGame(){requestLandscape();title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;}
 function togglePause(force){if(!playerState.active)return;playerState.paused=force??!playerState.paused;pauseScreen.classList.toggle("hidden",!playerState.paused);}
-function restart(){playerState.cores=0;cores.forEach(c=>{c.active=true;c.group.visible=true;});playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();startGame();}
+function restart(){
+ playerState.cores=0;playerState.health=100;playerState.energy=100;playerState.inventory={cards:0,upgrades:0,recordings:0,rare:0};
+ cores.forEach(c=>{c.active=true;c.group.visible=true;});
+ interactables.forEach(item=>item.solved=false);gateOpen=false;gateGroup.position.y=2.15;gatePanel.material=pinkMat;
+ if(!platforms.includes(gateCollider))platforms.push(gateCollider);
+ bridgeGroup.visible=false;bridgeParts.forEach(p=>p.position.y=0);
+ if(bridgeCollisionEnabled){bridgeColliders.forEach(p=>{const i=platforms.indexOf(p);if(i>=0)platforms.splice(i,1);});bridgeCollisionEnabled=false;}
+ if(liftCollisionEnabled){const i=platforms.indexOf(liftPlatform);if(i>=0)platforms.splice(i,1);liftCollisionEnabled=false;}
+ lift.userData.active=false;lift.position.y=-.1;liftPlatform.minY=-.32;liftPlatform.maxY=.12;
+ hiddenDoor.userData.open=false;hiddenDoor.position.y=1.4;hiddenPanel.visible=true;
+ extraFragments.forEach(f=>{f.taken=false;f.mesh.visible=true;});
+ enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});
+ shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
+ puzzlePanel.classList.add("hidden");puzzleTarget=null;playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
+}
 document.querySelector("#play-button").addEventListener("click",startGame);
 document.querySelector("#pause-button").addEventListener("click",()=>togglePause());
 document.querySelector("#resume-button").addEventListener("click",()=>togglePause(false));
@@ -286,6 +342,21 @@ addEventListener("orientationchange",()=>setTimeout(resizeGame,180));
 function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=stickVector.x!==0?stickVector.x:(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
 const clock=new THREE.Clock();
 function update(dt,time){
+  fireCooldown=Math.max(0,fireCooldown-dt);playerState.energy=Math.min(100,playerState.energy+10*dt);updateVitals();
+  enemies.forEach(enemy=>{
+    if(!enemy.alive){enemy.defeat=Math.min(1,enemy.defeat+dt*1.8);enemy.group.scale.setScalar(Math.max(.01,1-enemy.defeat));enemy.group.rotation.z+=dt*2;return;}
+    const distance=player.position.distanceTo(enemy.group.position);
+    if(enemy.type==="ground"){if(distance<10){enemy.group.position.x=THREE.MathUtils.damp(enemy.group.position.x,player.position.x,1.1,dt);enemy.group.position.z=THREE.MathUtils.damp(enemy.group.position.z,player.position.z,1.1,dt);}else{enemy.group.position.x=enemy.baseX+Math.sin(time*.7+enemy.phase)*1.6;enemy.group.position.z=enemy.baseZ;}if(distance<1.4&&enemy.attack<=0){damagePlayer(8);enemy.attack=1.2;}}
+    if(enemy.type==="elite"){enemy.group.position.x=enemy.baseX+Math.sin(time*.6)*2.2;if(distance<2.1&&enemy.attack<=0){damagePlayer(14);enemy.attack=1.4;}}
+    if(enemy.type==="turret"&&distance<16&&enemy.attack<=0){spawnEnemyShot(enemy);enemy.attack=2.2;}
+    enemy.attack=Math.max(0,enemy.attack-dt);enemy.group.rotation.y=Math.atan2(player.position.x-enemy.group.position.x,player.position.z-enemy.group.position.z);
+  });
+  for(let i=shots.length-1;i>=0;i--){
+    const shot=shots[i];shot.mesh.position.addScaledVector(shot.velocity,dt);shot.life-=dt;let remove=shot.life<=0;
+    if(!shot.enemy){for(const enemy of enemies){if(enemy.alive&&shot.mesh.position.distanceTo(enemy.group.position.clone().add(new THREE.Vector3(0,.8,0)))<1){enemy.hp-=25;remove=true;showToast("TARGET HIT · "+Math.max(0,enemy.hp)+" HP");if(enemy.hp<=0){enemy.alive=false;showToast("SECURITY UNIT DISABLED");}break;}}}
+    else if(shot.mesh.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1,0)))<.9){damagePlayer(12);remove=true;}
+    if(remove){world.remove(shot.mesh);shot.mesh.geometry.dispose();shots.splice(i,1);}
+  }
   cores.forEach((c,i)=>{if(c.active){c.group.rotation.y+=dt*.8;c.gem.rotation.y+=dt*1.4;c.group.position.y+=Math.sin(time*2+i)*.0015;}});
   drones.forEach(d=>{const alertDistance=player.position.distanceTo(d.group.position);if(playerState.active&&alertDistance<5){d.group.userData.mode="search";d.group.position.x=THREE.MathUtils.damp(d.group.position.x,player.position.x,1.1,dt);d.group.position.z=THREE.MathUtils.damp(d.group.position.z,player.position.z,1.1,dt);}else{d.group.userData.mode="patrol";d.group.position.x=d.baseX+Math.sin(time*d.speed+d.phase)*d.range;d.group.position.z=d.baseZ;}d.group.position.y=1.5+Math.sin(time*2+d.phase)*.25;d.group.rotation.y+=dt*.8;});
   portal.rotation.y+=dt*.3;ring.rotation.z+=dt*.5;ring2.rotation.z-=dt*.4;
@@ -327,13 +398,13 @@ function update(dt,time){
   feet[0].rotation.x=swing*.7;feet[1].rotation.x=-swing*.7;
   if(!playerState.grounded){legs.forEach((limb,i)=>limb.rotation.x=i===0?-.35:.35);arms.forEach(limb=>limb.rotation.x=-.45);}
   cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
-  drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){respawn();showToast("DRONE ALERT — CHECKPOINT RESTORED");}});
+  drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){damagePlayer(10);d.group.position.set(d.baseX,1.4,d.baseZ);}});
   extraFragments.forEach(f=>{if(!f.taken&&player.position.distanceTo(f.mesh.position)<1.2){f.taken=true;f.mesh.visible=false;showToast("DATA FRAGMENT ACQUIRED");}});
   let nearTerminal=false;for(const item of interactables){if(!item.solved&&player.position.distanceTo(item.group.position)<3.1)nearTerminal=true;}
   document.querySelector("#interact-button").classList.toggle("available",nearTerminal);
   if(lift.userData.active&&Math.abs(playerState.x-4)<1.8&&Math.abs(playerState.z+73)<1.8&&playerState.y<lift.position.y+.5){playerState.y=lift.position.y+.35;playerState.vy=Math.max(0,playerState.vy);}
 
-  if(playerState.cores===8&&interactables.every(item=>item.solved)&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
+  if(playerState.cores===8&&interactables.every(item=>item.solved)&&enemies.every(enemy=>!enemy.alive)&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
   const followDistance=isTouch?8.2:9.2;
   const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);
   camera.position.lerp(target,1-Math.exp(-7*dt));camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);
