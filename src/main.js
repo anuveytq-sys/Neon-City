@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import "./style.css";
+import { installPhaseFour } from "./phase4.js";
 
 const root = document.querySelector("#game-root");
 const loading = document.querySelector("#loading-screen");
@@ -293,7 +294,7 @@ function solvePuzzle(item){
 }
 document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;if(puzzleTarget.kind==="timed"&&Date.now()>puzzleDeadline){puzzleProgress=0;puzzleDeadline=Date.now()+9000;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="TIMEOUT · SEQUENCE RESET · 9 SECONDS";return;}const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
 document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
-function tryInteract(){if(!playerState.active||playerState.paused)return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
+function tryInteract(){if(!playerState.active||playerState.paused)return;if(phase4.interact())return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
 const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};
 const bridgeColliders=bridgeParts.map((p,i)=>{const x=-4+i*2;return {minX:x-1.05,maxX:x+1.05,minY:-.18,maxY:.04,minZ:-61.1,maxZ:-58.9};});
 let bridgeCollisionEnabled=false,liftCollisionEnabled=false;
@@ -361,7 +362,7 @@ function restart(){
  enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.attack=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});
  cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});laserRedirected=false;laserDamageTimer=0;laserGrid.position.y=1.45;laserBeam.material=laserMaterial;laserMirrors.forEach(mirror=>mirror.rotation.z=0);powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
  shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
- puzzlePanel.classList.add("hidden");puzzleTarget=null;playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
+ puzzlePanel.classList.add("hidden");puzzleTarget=null;phase4.reset();playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
 document.querySelector("#play-button").addEventListener("click",startGame);
 document.querySelector("#pause-button").addEventListener("click",()=>togglePause());
