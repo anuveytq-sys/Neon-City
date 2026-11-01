@@ -184,7 +184,7 @@ const gateGroup=new THREE.Group();gateGroup.position.set(0,2.15,-47);world.add(g
 const gateFrame=new THREE.Mesh(new THREE.BoxGeometry(7,4.3,.5),darkMat);gateGroup.add(gateFrame);
 const gatePanel=new THREE.Mesh(new THREE.BoxGeometry(6.5,3.9,.24),pinkMat);gatePanel.position.z=.32;gateGroup.add(gatePanel);
 const gateGlow=new THREE.Mesh(new THREE.BoxGeometry(6.2,.12,.08),cyanMat);gateGlow.position.set(0,0,.5);gateGroup.add(gateGlow);
-let gateOpen=false;
+let gateOpen=false;\nconst gateCollider={minX:-3.25,maxX:3.25,minY:0,maxY:4.3,minZ:-47.28,maxZ:-46.72};platforms.push(gateCollider);
 const bridgeGroup=new THREE.Group();bridgeGroup.position.set(0,-.05,-60);world.add(bridgeGroup);
 const bridgeParts=[];
 for(let i=0;i<5;i++){const plank=new THREE.Mesh(new THREE.BoxGeometry(2.1,.22,2.2),i%2?cyanMat:pinkMat);plank.position.set(-4+i*2,0,0);bridgeGroup.add(plank);bridgeParts.push(plank);}
@@ -280,10 +280,10 @@ function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||ke
 const clock=new THREE.Clock();
 function update(dt,time){
   cores.forEach((c,i)=>{if(c.active){c.group.rotation.y+=dt*.8;c.gem.rotation.y+=dt*1.4;c.group.position.y+=Math.sin(time*2+i)*.0015;}});
-  drones.forEach(d=>{d.group.position.x=d.baseX+Math.sin(time*d.speed+d.phase)*d.range;d.group.position.y=1.5+Math.sin(time*2+d.phase)*.25;d.group.rotation.y+=dt*.8;});
+  drones.forEach(d=>{const alertDistance=player.position.distanceTo(d.group.position);if(playerState.active&&alertDistance<5){d.group.userData.mode="search";d.group.position.x=THREE.MathUtils.damp(d.group.position.x,player.position.x,1.1,dt);d.group.position.z=THREE.MathUtils.damp(d.group.position.z,player.position.z,1.1,dt);}else{d.group.userData.mode="patrol";d.group.position.x=d.baseX+Math.sin(time*d.speed+d.phase)*d.range;d.group.position.z=d.baseZ;}d.group.position.y=1.5+Math.sin(time*2+d.phase)*.25;d.group.rotation.y+=dt*.8;});
   portal.rotation.y+=dt*.3;ring.rotation.z+=dt*.5;ring2.rotation.z-=dt*.4;
   generators.forEach((g,i)=>{g.rotation.y+=dt*(.35+i*.1);});
-  if(gateOpen){gateGroup.position.y=THREE.MathUtils.damp(gateGroup.position.y,7,3,dt);gatePanel.material=cyanMat;}
+  if(gateOpen){gateGroup.position.y=THREE.MathUtils.damp(gateGroup.position.y,7,3,dt);gatePanel.material=cyanMat;const idx=platforms.indexOf(gateCollider);if(idx>=0)platforms.splice(idx,1);}
   if(lift.userData.active){lift.position.y=-.1+Math.sin(time*1.3)*1.2;liftPlatform.minY=lift.position.y-.23;liftPlatform.maxY=lift.position.y+.23;}
   if(hiddenDoor.userData.open)hiddenDoor.position.y=THREE.MathUtils.damp(hiddenDoor.position.y,5,2,dt);
   bridgeParts.forEach((p,i)=>{p.position.y=bridgeGroup.visible?Math.sin(time*2+i*.4)*.07:0;bridgeColliders[i].minY=p.position.y-.11;bridgeColliders[i].maxY=p.position.y+.11;});
