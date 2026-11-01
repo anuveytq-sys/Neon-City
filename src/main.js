@@ -404,6 +404,7 @@ function update(dt,time){
 
   }
   if(!playerState.active||playerState.paused||playerState.won)return;
+  phase4.update(dt,time);
   const {f,r}=axisInput();const forward=new THREE.Vector3(Math.sin(cameraYaw),0,-Math.cos(cameraYaw));const right=new THREE.Vector3(Math.cos(cameraYaw),0,Math.sin(cameraYaw));
   const dir=forward.multiplyScalar(f).add(right.multiplyScalar(r));if(dir.lengthSq()>1)dir.normalize();
   const sprint=keys.has("shift")?1.28:1;const speed=7.4*sprint;
