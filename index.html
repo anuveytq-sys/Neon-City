@@ -7,6 +7,10 @@
     <meta name="description" content="Neon Velocity — a 3D cyberpunk parkour adventure." />
     <title>NEON VELOCITY // Cyberpunk Rescue</title>
     <link rel="stylesheet" href="/src/mobile-orientation.css" />
+    <style>
+      /* The boot layer is only a safety fallback. The game itself owns startup state. */
+      #loading-screen.boot-timeout{display:none!important;pointer-events:none!important}
+    </style>
   </head>
   <body>
     <div id="app">
@@ -53,6 +57,13 @@
         <button id="puzzle-close" class="secondary-button">CLOSE TERMINAL</button>
       </section>
     </div>
+    <script>
+      // Runs before the deferred module so a module/runtime failure can never leave a black boot layer.
+      setTimeout(function(){
+        var boot=document.getElementById('loading-screen');
+        if(boot) boot.classList.add('boot-timeout');
+      },1800);
+    </script>
     <script src="/src/mobile-performance.js"></script>
     <script type="module" src="/src/main.js"></script>
     <script src="/src/mobile-fix.js"></script>
