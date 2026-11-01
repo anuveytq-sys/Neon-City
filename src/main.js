@@ -378,6 +378,7 @@ function update(dt,time){
     else if(shot.mesh.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1,0)))<.9){damagePlayer(12);remove=true;}
     if(remove){world.remove(shot.mesh);shot.mesh.geometry.dispose();shots.splice(i,1);}
   }
+  if(playerState.active&&!playerState.paused){
   cores.forEach((c,i)=>{if(c.active){c.group.rotation.y+=dt*.8;c.gem.rotation.y+=dt*1.4;c.group.position.y+=Math.sin(time*2+i)*.0015;}});
   drones.forEach(d=>{const alertDistance=player.position.distanceTo(d.group.position);if(playerState.active&&alertDistance<5){d.group.userData.mode="search";d.group.position.x=THREE.MathUtils.damp(d.group.position.x,player.position.x,1.1,dt);d.group.position.z=THREE.MathUtils.damp(d.group.position.z,player.position.z,1.1,dt);}else{d.group.userData.mode="patrol";d.group.position.x=d.baseX+Math.sin(time*d.speed+d.phase)*d.range;d.group.position.z=d.baseZ;}d.group.position.y=1.5+Math.sin(time*2+d.phase)*.25;d.group.rotation.y+=dt*.8;});
   portal.rotation.y+=dt*.3;ring.rotation.z+=dt*.5;ring2.rotation.z-=dt*.4;
@@ -388,6 +389,7 @@ function update(dt,time){
   bridgeParts.forEach((p,i)=>{p.position.y=bridgeGroup.visible?Math.sin(time*2+i*.4)*.07:0;bridgeColliders[i].minY=p.position.y-.11;bridgeColliders[i].maxY=p.position.y+.11;});
   extraFragments.forEach((f,i)=>{if(!f.taken){f.mesh.rotation.y+=dt;f.mesh.position.y=1.2+Math.sin(time*2+i)*.16;}});
 
+  }
   if(!playerState.active||playerState.paused||playerState.won)return;
   const {f,r}=axisInput();const forward=new THREE.Vector3(Math.sin(cameraYaw),0,-Math.cos(cameraYaw));const right=new THREE.Vector3(Math.cos(cameraYaw),0,Math.sin(cameraYaw));
   const dir=forward.multiplyScalar(f).add(right.multiplyScalar(r));if(dir.lengthSq()>1)dir.normalize();
