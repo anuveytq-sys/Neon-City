@@ -121,6 +121,38 @@ scene.add(new THREE.Points(starsGeo,new THREE.PointsMaterial({color:0x9bc9ff,siz
 const skyline=new THREE.Group();scene.add(skyline);
 for(let i=0;i<80;i++){const h=5+Math.random()*30;const m=new THREE.Mesh(boxGeo,mat(i%4===0?0x1c1a37:0x111a30));m.scale.set(3+Math.random()*5,h,3+Math.random()*5);m.position.set((Math.random()-.5)*180,h/2-1,-Math.random()*150-15);skyline.add(m);}
 
+// Phase 3: turn the route into a recognizable, street-level cyberpunk city.
+const cityGroup=new THREE.Group();world.add(cityGroup);
+const asphalt=mat(0x111a2a),concrete=mat(0x303b50),glass=mat(0x173d58,0x0c526c),windowLit=mat(0x65eaff,0x168fa8),shopPink=mat(0xff54d9,0x8b1c6c);
+for(let z=-4;z>-112;z-=16){
+  // Road lanes, curbs and pedestrian sidewalks.
+  const road=new THREE.Mesh(new THREE.BoxGeometry(15,.12,15),asphalt);road.position.set(0,-.025,z-4);cityGroup.add(road);
+  for(const side of [-1,1]){
+    const curb=new THREE.Mesh(new THREE.BoxGeometry(1,.3,15),concrete);curb.position.set(side*8,-.03,z-4);cityGroup.add(curb);
+    const sidewalk=new THREE.Mesh(new THREE.BoxGeometry(3,.22,15),concrete);sidewalk.position.set(side*10,-.02,z-4);cityGroup.add(sidewalk);
+    // Building shells with lit windows, entrances, awnings and rooftop signage.
+    const floors=2+(Math.floor(Math.abs(z)/16+side+4)%3),height=floors*3.6+1.5;
+    const width=7.8,depth=13.5,x=side*16;
+    const shell=new THREE.Mesh(new THREE.BoxGeometry(width,height,depth),mat((Math.abs(z/16)%2)?0x202d46:0x29233e));shell.position.set(x,height/2-.08,z-4);cityGroup.add(shell);
+    const frontX=x-side*(width/2+.035);
+    const facade=new THREE.Mesh(new THREE.BoxGeometry(.12,height-.25,depth-.3),mat(0x101b30));facade.position.set(frontX,height/2-.08,z-4);cityGroup.add(facade);
+    for(let floor=0;floor<floors;floor++)for(let col=0;col<3;col++){
+      const win=new THREE.Mesh(new THREE.BoxGeometry(.09,1.45,1.55),((floor+col+Math.abs(z/16))%4===0)?shopPink:windowLit);
+      win.position.set(frontX-side*.075,1.05+floor*3.55,z-8+col*3.9);cityGroup.add(win);
+      const sill=new THREE.Mesh(new THREE.BoxGeometry(.16,.12,1.8),darkMat);sill.position.set(frontX-side*.13, .28+floor*3.55,z-8+col*3.9);cityGroup.add(sill);
+    }
+    const door=new THREE.Mesh(new THREE.BoxGeometry(.14,2.5,1.35),glass);door.position.set(frontX-side*.09,1.2,z-1.1);cityGroup.add(door);
+    const awning=new THREE.Mesh(new THREE.BoxGeometry(1.25,.16,2.4),side>0?pinkMat:cyanMat);awning.position.set(frontX-side*.45,3,z-1.1);cityGroup.add(awning);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(.18,.65,3.8),side>0?cyanMat:pinkMat);sign.position.set(frontX-side*.18,4.05,z-4);cityGroup.add(sign);
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(2.4,.7,2.2),darkMat);roof.position.set(x,height+.25,z-4);cityGroup.add(roof);
+    const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.035,.06,2.1,6),cyanMat);antenna.position.set(x,height+1.6,z-4);cityGroup.add(antenna);
+    const streetLamp=new THREE.Group();streetLamp.position.set(side*9.1,0,z-4);cityGroup.add(streetLamp);
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,4.2,8),darkMat);post.position.y=2.1;streetLamp.add(post);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(1.1,.08,.08),cyanMat);arm.position.set(-side*.48,4.12,0);streetLamp.add(arm);
+    const lamp=new THREE.PointLight(side>0?0xff4fd8:0x45f6ef,4,7);lamp.position.set(-side*.9,4,0);streetLamp.add(lamp);
+  }
+  for(let dash=-10;dash<5;dash+=5){const lane=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,2.1),mat(0x8ba7c4,0x344b66));lane.position.set(0,.05,z+dash);cityGroup.add(lane);}
+}
 // Phase 2 district dressing: layered rails, service conduits, rooftop units and holographic markers.
 const detailGroup=new THREE.Group();world.add(detailGroup);
 for(let z=-8;z>-112;z-=12){
@@ -146,12 +178,63 @@ for(let i=0;i<8;i++){
 }
 
 
-// Input
+// Phase 3 interactive systems: terminals, locks, power relays, lifts, bridges and hidden routes.
+const interactables=[];
+const gateGroup=new THREE.Group();gateGroup.position.set(0,2.15,-47);world.add(gateGroup);
+const gateFrame=new THREE.Mesh(new THREE.BoxGeometry(7,4.3,.5),darkMat);gateGroup.add(gateFrame);
+const gatePanel=new THREE.Mesh(new THREE.BoxGeometry(6.5,3.9,.24),pinkMat);gatePanel.position.z=.32;gateGroup.add(gatePanel);
+const gateGlow=new THREE.Mesh(new THREE.BoxGeometry(6.2,.12,.08),cyanMat);gateGlow.position.set(0,0,.5);gateGroup.add(gateGlow);
+let gateOpen=false;
+const bridgeGroup=new THREE.Group();bridgeGroup.position.set(0,-.05,-60);world.add(bridgeGroup);
+const bridgeParts=[];
+for(let i=0;i<5;i++){const plank=new THREE.Mesh(new THREE.BoxGeometry(2.1,.22,2.2),i%2?cyanMat:pinkMat);plank.position.set(-4+i*2,0,0);bridgeGroup.add(plank);bridgeParts.push(plank);}
+bridgeGroup.visible=false;
+const lift=box(4,-.1,-73,3.2,.45,3.2,cyanMat,false);lift.userData.baseY=-.1;lift.userData.active=false;
+const hiddenDoor=new THREE.Group();hiddenDoor.position.set(-5,1.4,-87);world.add(hiddenDoor);
+const hiddenPanel=new THREE.Mesh(new THREE.BoxGeometry(.35,2.8,3.2),shopPink);hiddenDoor.add(hiddenPanel);
+const generators=[];
+function makeTerminal(x,z,label,kind,sequence){
+ const group=new THREE.Group();group.position.set(x,0,z);world.add(group);
+ const pedestal=new THREE.Mesh(new THREE.BoxGeometry(1.05,1.35,.8),darkMat);pedestal.position.y=.68;group.add(pedestal);
+ const screenMesh=new THREE.Mesh(new THREE.BoxGeometry(.9,.72,.12),cyanMat);screenMesh.position.set(0,1.35,-.42);group.add(screenMesh);
+ const halo=new THREE.Mesh(new THREE.TorusGeometry(.8,.045,8,24),pinkMat);halo.position.y=1.25;group.add(halo);
+ const light=new THREE.PointLight(0x45f6ef,5,5);light.position.y=1.8;group.add(light);
+ const obj={group,label,kind,sequence,solved:false};interactables.push(obj);return obj;
+}
+makeTerminal(-4,-23,"CIRCUIT ROUTER","circuit",[1,3,2]);
+makeTerminal(4,-55,"SECURITY CONSOLE","sequence",[2,1,3,2]);
+makeTerminal(-4,-82,"NETWORK SYNCHRONIZER","sync",[3,2,1,3]);
+for(let i=0;i<3;i++){const gen=new THREE.Group();gen.position.set(i===0?-6:i===1?6:0,.2,-34-i*12);world.add(gen);const core=new THREE.Mesh(new THREE.CylinderGeometry(.55,.75,1.8,8),darkMat);gen.add(core);const coil=new THREE.Mesh(new THREE.TorusGeometry(.8,.08,8,24),i%2?pinkMat:cyanMat);coil.rotation.x=Math.PI/2;gen.add(coil);generators.push(gen);}
+const extraFragments=[];
+for(const [x,y,z] of [[-6,1.1,-14],[6,1.3,-44],[-6,1.4,-66],[6,1.2,-99]]){const shard=new THREE.Mesh(new THREE.IcosahedronGeometry(.34,0),pinkMat);shard.position.set(x,y,z);world.add(shard);extraFragments.push({mesh:shard,taken:false});}
+let puzzleTarget=null,puzzleProgress=0;
+const puzzlePanel=document.querySelector("#puzzle-panel"),puzzleTitle=document.querySelector("#puzzle-title"),puzzleStatus=document.querySelector("#puzzle-status");
+function openPuzzle(item){puzzleTarget=item;puzzleProgress=0;puzzleTitle.textContent=item.label;puzzleStatus.textContent="TRACE THE SIGNAL SEQUENCE";puzzlePanel.classList.remove("hidden");playerState.paused=true;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));}
+function closePuzzle(){puzzlePanel.classList.add("hidden");playerState.paused=false;puzzleTarget=null;}
+function solvePuzzle(item){
+ item.solved=true;closePuzzle();showToast("SYSTEM OVERRIDE ACCEPTED");
+ if(item.kind==="circuit"){gateOpen=true;gateGroup.userData.open=true;}
+ if(item.kind==="sequence"){bridgeGroup.visible=true;lift.userData.active=true;}
+ if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}
+}
+document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
+document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
+function tryInteract(){if(!playerState.active||playerState.paused)return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
+const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};
+\n// Input
 const keys=new Set(), touch=new Set();
+let stickVector={x:0,y:0},stickPointer=null;
+const stick=document.querySelector("#move-stick"),stickKnob=document.querySelector("#stick-knob");
+function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=rect.width*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:dx/max,y:dy/max};stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}
+stick.addEventListener("pointerdown",e=>{e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);updateStick(e);});
+stick.addEventListener("pointermove",e=>{if(e.pointerId===stickPointer)updateStick(e);});
+function releaseStick(){stickPointer=null;stickVector={x:0,y:0};stickKnob.style.transform="translate(0,0)";}
+for(const ev of ["pointerup","pointercancel","lostpointercapture"])stick.addEventListener(ev,releaseStick);
+document.querySelector("#interact-button").addEventListener("pointerdown",e=>{e.preventDefault();tryInteract();});
 let cameraYaw=0, cameraPitch=.16, dragging=false,lastPointer=null;
-addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();});
+addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();if(e.key.toLowerCase()==="e")tryInteract();});
 addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
-renderer.domElement.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"||e.pointerType==="touch"){dragging=true;lastPointer={x:e.clientX,y:e.clientY};renderer.domElement.setPointerCapture?.(e.pointerId);}});
+renderer.domElement.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.clientX>innerWidth*.35){dragging=true;lastPointer={x:e.clientX,y:e.clientY};renderer.domElement.setPointerCapture?.(e.pointerId);}});
 addEventListener("pointerup",()=>{dragging=false;lastPointer=null;});
 addEventListener("pointercancel",()=>{dragging=false;lastPointer=null;});
 addEventListener("pointermove",e=>{if(dragging&&lastPointer&&playerState.active&&!playerState.paused){cameraYaw-= (e.clientX-lastPointer.x)*.005;cameraPitch=THREE.MathUtils.clamp(cameraPitch+(e.clientY-lastPointer.y)*.0025,-.12,.68);lastPointer={x:e.clientX,y:e.clientY};}});
@@ -193,12 +276,19 @@ document.querySelector("#again-button").addEventListener("click",restart);
 function resizeGame(){const viewport=gameViewport();camera.aspect=viewport.width/viewport.height;camera.updateProjectionMatrix();renderer.setSize(viewport.width,viewport.height);renderer.setPixelRatio(Math.min(devicePixelRatio,isTouch?1.5:2));}
 addEventListener("resize",resizeGame);
 addEventListener("orientationchange",()=>setTimeout(resizeGame,180));
-function axisInput(){const f=(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
+function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=stickVector.x!==0?stickVector.x:(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
 const clock=new THREE.Clock();
 function update(dt,time){
   cores.forEach((c,i)=>{if(c.active){c.group.rotation.y+=dt*.8;c.gem.rotation.y+=dt*1.4;c.group.position.y+=Math.sin(time*2+i)*.0015;}});
   drones.forEach(d=>{d.group.position.x=d.baseX+Math.sin(time*d.speed+d.phase)*d.range;d.group.position.y=1.5+Math.sin(time*2+d.phase)*.25;d.group.rotation.y+=dt*.8;});
   portal.rotation.y+=dt*.3;ring.rotation.z+=dt*.5;ring2.rotation.z-=dt*.4;
+  generators.forEach((g,i)=>{g.rotation.y+=dt*(.35+i*.1);});
+  if(gateOpen){gateGroup.position.y=THREE.MathUtils.damp(gateGroup.position.y,7,3,dt);gatePanel.material=cyanMat;}
+  if(lift.userData.active){lift.position.y=-.1+Math.sin(time*1.3)*1.2;}
+  if(hiddenDoor.userData.open)hiddenDoor.position.y=THREE.MathUtils.damp(hiddenDoor.position.y,5,2,dt);
+  bridgeParts.forEach((p,i)=>{p.position.y=bridgeGroup.visible?Math.sin(time*2+i*.4)*.07:0;});
+  extraFragments.forEach((f,i)=>{if(!f.taken){f.mesh.rotation.y+=dt;f.mesh.position.y=1.2+Math.sin(time*2+i)*.16;}});
+
   if(!playerState.active||playerState.paused||playerState.won)return;
   const {f,r}=axisInput();const forward=new THREE.Vector3(Math.sin(cameraYaw),0,-Math.cos(cameraYaw));const right=new THREE.Vector3(Math.cos(cameraYaw),0,Math.sin(cameraYaw));
   const dir=forward.multiplyScalar(f).add(right.multiplyScalar(r));if(dir.lengthSq()>1)dir.normalize();
@@ -230,7 +320,12 @@ function update(dt,time){
   feet[0].rotation.x=swing*.7;feet[1].rotation.x=-swing*.7;
   if(!playerState.grounded){legs.forEach((limb,i)=>limb.rotation.x=i===0?-.35:.35);arms.forEach(limb=>limb.rotation.x=-.45);}
   cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
-  drones.forEach(d=>{if(player.position.distanceTo(d.group.position)<1.15){respawn();}});
+  drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){respawn();showToast("DRONE ALERT — CHECKPOINT RESTORED");}});
+  extraFragments.forEach(f=>{if(!f.taken&&player.position.distanceTo(f.mesh.position)<1.2){f.taken=true;f.mesh.visible=false;showToast("DATA FRAGMENT ACQUIRED");}});
+  let nearTerminal=false;for(const item of interactables){if(!item.solved&&player.position.distanceTo(item.group.position)<3.1)nearTerminal=true;}
+  document.querySelector("#interact-button").classList.toggle("available",nearTerminal);
+  if(lift.userData.active&&Math.abs(playerState.x-4)<1.8&&Math.abs(playerState.z+73)<1.8&&playerState.y<lift.position.y+.5){playerState.y=lift.position.y+.35;playerState.vy=Math.max(0,playerState.vy);}
+
   if(playerState.cores===8&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
   const followDistance=isTouch?8.2:9.2;
   const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);
