@@ -121,6 +121,31 @@ scene.add(new THREE.Points(starsGeo,new THREE.PointsMaterial({color:0x9bc9ff,siz
 const skyline=new THREE.Group();scene.add(skyline);
 for(let i=0;i<80;i++){const h=5+Math.random()*30;const m=new THREE.Mesh(boxGeo,mat(i%4===0?0x1c1a37:0x111a30));m.scale.set(3+Math.random()*5,h,3+Math.random()*5);m.position.set((Math.random()-.5)*180,h/2-1,-Math.random()*150-15);skyline.add(m);}
 
+// Phase 2 district dressing: layered rails, service conduits, rooftop units and holographic markers.
+const detailGroup=new THREE.Group();world.add(detailGroup);
+for(let z=-8;z>-112;z-=12){
+  for(const side of [-1,1]){
+    const rail=new THREE.Mesh(new THREE.BoxGeometry(.12,.72,10),cyanMat);rail.position.set(side*8.55,.34,z-3);detailGroup.add(rail);
+    const support=new THREE.Mesh(new THREE.BoxGeometry(.18,.9,.18),darkMat);support.position.set(side*8.55,.2,z-7);detailGroup.add(support);
+    const conduit=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,9,8),pinkMat);conduit.rotation.x=Math.PI/2;conduit.position.set(side*7.8,.12,z-3);detailGroup.add(conduit);
+  }
+}
+for(let i=0;i<12;i++){
+  const z=-10-i*8,side=i%2?1:-1,x=side*(6.7+(i%3)*.35);
+  const unit=new THREE.Group();unit.position.set(x,.05,z);detailGroup.add(unit);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(1.15,.42,1.5),darkMat);unit.add(base);
+  const glow=new THREE.Mesh(new THREE.BoxGeometry(.82,.035,1.08),i%2?pinkMat:cyanMat);glow.position.y=.23;unit.add(glow);
+  const beacon=new THREE.PointLight(i%2?0xff3fd1:0x39f5ff,2.5,4);beacon.position.y=.8;unit.add(beacon);
+}
+for(let i=0;i<8;i++){
+  const z=-16-i*12;
+  const sign=new THREE.Group();sign.position.set(i%2?7.6:-7.6,3.2,z);world.add(sign);
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(1.45,1.05,.12),darkMat);sign.add(frame);
+  const panel=new THREE.Mesh(new THREE.BoxGeometry(1.22,.78,.04),i%2?pinkMat:cyanMat);panel.position.z=-.09;sign.add(panel);
+  const glyph=new THREE.Mesh(new THREE.BoxGeometry(.72,.08,.05),mat(0xeafcff,0x7acfff));glyph.position.z=-.13;sign.add(glyph);
+}
+
+
 // Input
 const keys=new Set(), touch=new Set();
 let cameraYaw=0, cameraPitch=.16, dragging=false,lastPointer=null;
