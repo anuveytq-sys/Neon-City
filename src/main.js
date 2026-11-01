@@ -91,7 +91,7 @@ for(const side of [-1,1]){
 }
 const footGeo=new THREE.BoxGeometry(.3,.18,.5);const feet=[];
 for(const x of [-.25,.25]){const f=new THREE.Mesh(footGeo,mat(0x101827));f.position.set(x,.12,0);player.add(f);feet.push(f);}
-const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,z:0},active:false,paused:false,won:false};
+const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,y:0,z:0},active:false,paused:false,won:false};
 player.position.set(0,0,1);
 
 // Energy cores.
