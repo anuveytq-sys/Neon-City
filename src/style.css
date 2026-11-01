@@ -50,3 +50,10 @@
 .puzzle-buttons button.selected{background:#176d70;box-shadow:0 0 18px #5ff7ed;}
 .puzzle-panel .secondary-button{margin-top:4px;}
 @media(max-width:650px){.move-stick{width:118px;height:118px}.stick-knob{width:50px;height:50px}.action-button{width:56px;height:56px}.right-actions{gap:10px}}
+
+/* Phase 3 input refinement: touch anywhere on the left to move; swipe on the right to orbit. */
+#game-root canvas{touch-action:none;}
+#touch-controls{touch-action:none;}
+.move-stick{touch-action:none;}
+.puzzle-panel{max-height:min(86dvh,560px);overflow-y:auto;overscroll-behavior:contain;}
+@media(orientation:portrait) and (max-width:800px){.puzzle-panel{width:min(88vw,520px);padding:clamp(16px,3vw,28px);}}
