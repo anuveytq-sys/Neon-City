@@ -82,6 +82,13 @@ const head = new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),mat(0xffc7ad));h
 const hair = new THREE.Mesh(new THREE.SphereGeometry(.37,16,12,0,Math.PI*2,0,Math.PI*.62),mat(0x171326));hair.position.y=2.08;player.add(hair);
 const visor = new THREE.Mesh(new THREE.BoxGeometry(.48,.12,.1),cyanMat);visor.position.set(0,1.99,-.3);player.add(visor);
 const stripe = new THREE.Mesh(new THREE.BoxGeometry(.72,.13,.54),pinkMat);stripe.position.set(0,1.25,0);player.add(stripe);
+const limbMat=mat(0x263653), jointMat=mat(0x111a2d);
+const limbGeo=new THREE.CapsuleGeometry(.13,.48,4,8);
+const arms=[],legs=[];
+for(const side of [-1,1]){
+  const arm=new THREE.Mesh(limbGeo,limbMat);arm.position.set(side*.48,1.25,0);arm.rotation.z=side*.12;player.add(arm);arms.push(arm);
+  const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.48,4,8),jointMat);leg.position.set(side*.22,.53,0);player.add(leg);legs.push(leg);
+}
 const footGeo=new THREE.BoxGeometry(.3,.18,.5);const feet=[];
 for(const x of [-.25,.25]){const f=new THREE.Mesh(footGeo,mat(0x101827));f.position.set(x,.12,0);player.add(f);feet.push(f);}
 const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,z:0},active:false,paused:false,won:false};
@@ -119,17 +126,33 @@ const keys=new Set(), touch=new Set();
 let cameraYaw=0, cameraPitch=.16, dragging=false,lastPointer=null;
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();});
 addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
-renderer.domElement.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"){dragging=true;lastPointer={x:e.clientX,y:e.clientY};}});
+renderer.domElement.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"||e.pointerType==="touch"){dragging=true;lastPointer={x:e.clientX,y:e.clientY};renderer.domElement.setPointerCapture?.(e.pointerId);}});
 addEventListener("pointerup",()=>{dragging=false;lastPointer=null;});
-addEventListener("pointermove",e=>{if(dragging&&lastPointer&&playerState.active&&!playerState.paused){cameraYaw-= (e.clientX-lastPointer.x)*.004;cameraPitch=THREE.MathUtils.clamp(cameraPitch+(e.clientY-lastPointer.y)*.002,-.05,.55);lastPointer={x:e.clientX,y:e.clientY};}});
+addEventListener("pointercancel",()=>{dragging=false;lastPointer=null;});
+addEventListener("pointermove",e=>{if(dragging&&lastPointer&&playerState.active&&!playerState.paused){cameraYaw-= (e.clientX-lastPointer.x)*.005;cameraPitch=THREE.MathUtils.clamp(cameraPitch+(e.clientY-lastPointer.y)*.0025,-.12,.68);lastPointer={x:e.clientX,y:e.clientY};}});
 function bindHold(button,action){button.addEventListener("pointerdown",e=>{e.preventDefault();touch.add(action);button.setPointerCapture?.(e.pointerId);});for(const ev of ["pointerup","pointercancel","lostpointercapture"])button.addEventListener(ev,()=>touch.delete(action));}
 document.querySelectorAll("[data-move]").forEach(b=>bindHold(b,b.dataset.move));
 const jumpButton=document.querySelector("#jump-button");
 let jumpQueued=false;jumpButton.addEventListener("pointerdown",e=>{e.preventDefault();jumpQueued=true;});
 
-// Simple deterministic platform collision and jump physics.
-function solidAt(x,z){return platforms.find(p=>x>p.minX-.25&&x<p.maxX+.25&&z>p.minZ-.25&&z<p.maxZ+.25);}
-function respawn(){playerState.x=playerState.checkpoint.x;playerState.z=playerState.checkpoint.z;playerState.y=0;playerState.vy=0;playerState.vx=0;playerState.vz=0;player.position.set(playerState.x,playerState.y,playerState.z);showToast("CHECKPOINT RESTORED");}
+// Phase 2 character controller: swept vertical landing, separate horizontal resolution,
+// stable ground support, buffered jumps, coyote time, and bounded acceleration.
+const PLAYER_RADIUS=.34, PLAYER_HEIGHT=2.2, GRAVITY=25, JUMP_SPEED=10.2;
+let coyoteTimer=0,jumpBuffer=0;
+function overlapsBody(p,x,z,feetY){
+  const horizontal=x+PLAYER_RADIUS>p.minX&&x-PLAYER_RADIUS<p.maxX&&z+PLAYER_RADIUS>p.minZ&&z-PLAYER_RADIUS<p.maxZ;
+  const vertical=feetY<p.maxY-.025&&feetY+PLAYER_HEIGHT>p.minY+.025;
+  return horizontal&&vertical;
+}
+function collidesAt(x,z,y){return platforms.some(p=>overlapsBody(p,x,z,y));}
+function findLanding(x,z,oldY,newY){
+  let top=-Infinity;
+  for(const p of platforms){
+    if(x+PLAYER_RADIUS>p.minX&&x-PLAYER_RADIUS<p.maxX&&z+PLAYER_RADIUS>p.minZ&&z-PLAYER_RADIUS<p.maxZ&&oldY>=p.maxY-.18&&newY<=p.maxY&&p.maxY>top)top=p.maxY;
+  }
+  return top;
+}
+function respawn(){playerState.x=playerState.checkpoint.x;playerState.z=playerState.checkpoint.z;playerState.y=0;playerState.vy=0;playerState.vx=0;playerState.vz=0;playerState.grounded=false;coyoteTimer=0;jumpBuffer=0;player.position.set(playerState.x,playerState.y,playerState.z);showToast("CHECKPOINT RESTORED");}
 let toastTimer;
 function showToast(text){toast.textContent=text;toast.style.opacity="1";clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity="0",1400);}
 function updateHUD(){coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";progressFill.style.width=(playerState.cores/8*100)+"%";objective.textContent=playerState.cores===8?"Reach the glowing grid portal":"Collect the "+(8-playerState.cores)+" remaining energy cores";}
@@ -154,21 +177,39 @@ function update(dt,time){
   if(!playerState.active||playerState.paused||playerState.won)return;
   const {f,r}=axisInput();const forward=new THREE.Vector3(Math.sin(cameraYaw),0,-Math.cos(cameraYaw));const right=new THREE.Vector3(Math.cos(cameraYaw),0,Math.sin(cameraYaw));
   const dir=forward.multiplyScalar(f).add(right.multiplyScalar(r));if(dir.lengthSq()>1)dir.normalize();
-  const speed=keys.has("shift")?10:7.2;playerState.vx=THREE.MathUtils.damp(playerState.vx,dir.x*speed,12,dt);playerState.vz=THREE.MathUtils.damp(playerState.vz,dir.z*speed,12,dt);
-  if((keys.has(" ")||keys.has("space")||jumpQueued)&&playerState.grounded){playerState.vy=9.5;playerState.grounded=false;}jumpQueued=false;
-  playerState.vy-=22*dt;const nextX=playerState.x+playerState.vx*dt,nextZ=playerState.z+playerState.vz*dt;
-  const nextY=playerState.y+playerState.vy*dt;
-  const floor=solidAt(nextX,nextZ);
-  if(floor&&nextY<=floor.maxY+.03&&playerState.y>=floor.maxY-.15&&playerState.vy<=0){playerState.y=floor.maxY;playerState.vy=0;playerState.grounded=true;}else{playerState.y=nextY;playerState.grounded=false;}
-  playerState.x=nextX;playerState.z=nextZ;
+  const sprint=keys.has("shift")?1.28:1;const speed=7.4*sprint;
+  const targetVX=dir.x*speed,targetVZ=dir.z*speed;
+  const accel=playerState.grounded?19:8;
+  playerState.vx=THREE.MathUtils.damp(playerState.vx,targetVX,accel,dt);
+  playerState.vz=THREE.MathUtils.damp(playerState.vz,targetVZ,accel,dt);
+  if(playerState.grounded)coyoteTimer=.12;else coyoteTimer=Math.max(0,coyoteTimer-dt);
+  if(keys.has(" ")||keys.has("space")||jumpQueued)jumpBuffer=.14;else jumpBuffer=Math.max(0,jumpBuffer-dt);
+  if(jumpBuffer>0&&coyoteTimer>0){playerState.vy=JUMP_SPEED;playerState.grounded=false;coyoteTimer=0;jumpBuffer=0;}
+  jumpQueued=false;
+  const oldY=playerState.y;playerState.vy-=GRAVITY*dt;
+  let nextX=playerState.x+playerState.vx*dt,nextZ=playerState.z+playerState.vz*dt;
+  if(collidesAt(nextX,playerState.z,playerState.y)){nextX=playerState.x;playerState.vx=0;}
+  if(collidesAt(nextX,nextZ,playerState.y)){nextZ=playerState.z;playerState.vz=0;}
+  let nextY=playerState.y+playerState.vy*dt;
+  if(playerState.vy<=0){const landing=findLanding(nextX,nextZ,oldY,nextY);if(landing>-Infinity){nextY=landing;playerState.vy=0;playerState.grounded=true;}else playerState.grounded=false;}
+  else {if(collidesAt(nextX,nextZ,nextY)){playerState.vy=0;nextY=playerState.y;}playerState.grounded=false;}
+  playerState.x=nextX;playerState.z=nextZ;playerState.y=nextY;
   if(playerState.y< -8||playerState.z< -125)respawn();
   player.position.set(playerState.x,playerState.y,playerState.z);
-  if(dir.lengthSq()>.04){player.rotation.y=Math.atan2(dir.x,-dir.z);body.position.y=1.05+Math.sin(time*13)*.035;feet[0].rotation.x=Math.sin(time*13)*.5;feet[1].rotation.x=-Math.sin(time*13)*.5;}
+  const moving=dir.lengthSq()>.04;const gait=time*(keys.has("shift")?15:11);
+  if(moving){player.rotation.y=Math.atan2(dir.x,-dir.z);body.position.y=1.05+(playerState.grounded?Math.abs(Math.sin(gait))*.045:0);body.rotation.z=THREE.MathUtils.damp(body.rotation.z,-dir.x*.07,8,dt);}
+  else {body.position.y=THREE.MathUtils.damp(body.position.y,1.05,8,dt);body.rotation.z=THREE.MathUtils.damp(body.rotation.z,0,8,dt);}
+  const swing=playerState.grounded&&moving?Math.sin(gait)*.62:0;
+  legs.forEach((limb,i)=>limb.rotation.x=i===0?swing:-swing);
+  arms.forEach((limb,i)=>limb.rotation.x=i===0?-swing*.8:swing*.8);
+  feet[0].rotation.x=swing*.7;feet[1].rotation.x=-swing*.7;
+  if(!playerState.grounded){legs.forEach((limb,i)=>limb.rotation.x=i===0?-.35:.35);arms.forEach(limb=>limb.rotation.x=-.45);}
   cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
   drones.forEach(d=>{if(player.position.distanceTo(d.group.position)<1.15){respawn();}});
   if(playerState.cores===8&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
-  const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*9,player.position.y+5+cameraPitch*5,player.position.z+Math.cos(cameraYaw)*9);
-  camera.position.lerp(target,1-Math.exp(-5*dt));camera.lookAt(player.position.x,player.position.y+1.1,player.position.z-1);
+  const followDistance=isTouch?8.2:9.2;
+  const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);
+  camera.position.lerp(target,1-Math.exp(-7*dt));camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);
 }
 camera.position.set(0,6,11);camera.lookAt(0,1,-4);
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;update(dt,t);renderer.render(scene,camera);}
