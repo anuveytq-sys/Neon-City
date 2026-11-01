@@ -1,5 +1,7 @@
-import * as THREE from "three";
+import "./mobile-performance.js";
 import "./style.css";
+import "./mobile-orientation.css";
+import * as THREE from "three";
 import { installPhaseFour } from "./phase4.js";
 
 const root = document.querySelector("#game-root");
@@ -16,6 +18,7 @@ const toast = document.querySelector("#toast");
 const isTouch = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
 
 const scene = new THREE.Scene();
+const addDecorativeLight=(parent,light)=>{if(!isTouch)parent.add(light);};
 scene.background = new THREE.Color(0x080d20);
 scene.fog = new THREE.FogExp2(0x080d20, 0.014);
 function gameViewport(){const rotateViewport=isTouch&&innerHeight>innerWidth&&innerWidth<=800;return rotateViewport?{width:innerHeight,height:innerWidth}:{width:innerWidth,height:innerHeight};}
@@ -37,8 +40,8 @@ keyLight.position.set(-18, 35, 12);
 keyLight.castShadow = !isTouch;
 keyLight.shadow.mapSize.set(1024, 1024);
 scene.add(keyLight);
-const pinkLight = new THREE.PointLight(0xff38d1, 65, 45); pinkLight.position.set(8, 7, -15); scene.add(pinkLight);
-const cyanLight = new THREE.PointLight(0x21eaff, 75, 55); cyanLight.position.set(-12, 8, -42); scene.add(cyanLight);
+const pinkLight = new THREE.PointLight(0xff38d1, 65, 45); pinkLight.position.set(8, 7, -15); addDecorativeLight(scene,pinkLight);
+const cyanLight = new THREE.PointLight(0x21eaff, 75, 55); cyanLight.position.set(-12, 8, -42); addDecorativeLight(scene,cyanLight);
 
 const mat = (color, emissive = 0x000000, roughness = .55) => new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity: emissive ? 1.4 : 0, roughness, metalness: .25 });
 const floorMat = mat(0x17233c), wallMat = mat(0x202d49), darkMat = mat(0x0b1428), cyanMat = mat(0x45f6ef, 0x0b8f96), pinkMat = mat(0xff4fd8, 0x9c126f), goldMat = mat(0xffd66b, 0x8d5d08);
@@ -68,13 +71,13 @@ for(let i=0;i<16;i++){
   for(let yy=1;yy<h;yy+=1.5){const s=strips.clone();s.position.set(x,yy,z-3.04);world.add(s);}
   b.material=wallMat;
 }
-for(let z=-12;z>-112;z-=16){for(let side of [-1,1]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.11,5,8),darkMat);pole.position.set(side*8,2,z);world.add(pole);const lamp=new THREE.PointLight(side>0?0xff4fd8:0x32f5ff,16,13);lamp.position.set(side*8,4.5,z);world.add(lamp);}}
+for(let z=-12;z>-112;z-=16){for(let side of [-1,1]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.11,5,8),darkMat);pole.position.set(side*8,2,z);world.add(pole);const lamp=new THREE.PointLight(side>0?0xff4fd8:0x32f5ff,16,13);lamp.position.set(side*8,4.5,z);addDecorativeLight(world,lamp);}}
 for(const [x,z] of [[-5,-19],[5,-28],[-4,-42],[4,-60],[-5,-76],[5,-94]]) box(x,1.1,z,3.4,.45,3.4,wallMat);
 box(0,.3,-113,8,1.2,8,wallMat);
 const portal = new THREE.Group();portal.position.set(0,1.5,-112);world.add(portal);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(2.1,.16,12,48),cyanMat);portal.add(ring);
 const ring2=new THREE.Mesh(new THREE.TorusGeometry(1.65,.06,8,48),pinkMat);portal.add(ring2);
-const portalLight=new THREE.PointLight(0x38f6ff,45,18);portalLight.position.set(0,1,0);portal.add(portalLight);
+const portalLight=new THREE.PointLight(0x38f6ff,45,18);portalLight.position.set(0,1,0);addDecorativeLight(portal,portalLight);
 
 // Detailed human-proportioned runner: visible facial features, layered hair, fitted clothing and articulated limbs.
 const player = new THREE.Group(); world.add(player);
@@ -172,7 +175,7 @@ for(const [x,y,z] of [[-3,1.5,-9],[3,1.5,-17],[-4,2.2,-27],[4,1.7,-37],[-4,1.7,-
   const cap=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.09,10),cyanMat);cap.position.y=.45;g.add(cap);
   const aura=new THREE.Mesh(new THREE.TorusGeometry(.58,.045,8,24),cyanMat);aura.rotation.x=Math.PI/2;g.add(aura);
   const cellGlow=new THREE.Mesh(new THREE.BoxGeometry(.08,.52,.08),cyanMat);cellGlow.position.y=.02;g.add(cellGlow);
-  const light=new THREE.PointLight(0xffc85a,8,5);g.add(light);cores.push({group:g,gem,active:true});
+  const light=new THREE.PointLight(0xffc85a,8,5);addDecorativeLight(g,light);cores.push({group:g,gem,active:true});
 }
 
 // Patrol drones are hazards to dodge, not combat targets.
@@ -221,7 +224,7 @@ for(let z=-4;z>-112;z-=16){
     const streetLamp=new THREE.Group();streetLamp.position.set(side*9.1,0,z-4);cityGroup.add(streetLamp);
     const post=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,4.2,8),darkMat);post.position.y=2.1;streetLamp.add(post);
     const arm=new THREE.Mesh(new THREE.BoxGeometry(1.1,.08,.08),cyanMat);arm.position.set(-side*.48,4.12,0);streetLamp.add(arm);
-    const lamp=new THREE.PointLight(side>0?0xff4fd8:0x45f6ef,4,7);lamp.position.set(-side*.9,4,0);streetLamp.add(lamp);
+    const lamp=new THREE.PointLight(side>0?0xff4fd8:0x45f6ef,4,7);lamp.position.set(-side*.9,4,0);addDecorativeLight(streetLamp,lamp);
   }
   for(let dash=-10;dash<5;dash+=5){const lane=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,2.1),mat(0x8ba7c4,0x344b66));lane.position.set(0,.05,z+dash);cityGroup.add(lane);}
 }
@@ -239,7 +242,7 @@ for(let i=0;i<12;i++){
   const unit=new THREE.Group();unit.position.set(x,.05,z);detailGroup.add(unit);
   const base=new THREE.Mesh(new THREE.BoxGeometry(1.15,.42,1.5),darkMat);unit.add(base);
   const glow=new THREE.Mesh(new THREE.BoxGeometry(.82,.035,1.08),i%2?pinkMat:cyanMat);glow.position.y=.23;unit.add(glow);
-  const beacon=new THREE.PointLight(i%2?0xff3fd1:0x39f5ff,2.5,4);beacon.position.y=.8;unit.add(beacon);
+  const beacon=new THREE.PointLight(i%2?0xff3fd1:0x39f5ff,2.5,4);beacon.position.y=.8;addDecorativeLight(unit,beacon);
 }
 for(let i=0;i<8;i++){
   const z=-16-i*12;
@@ -277,7 +280,7 @@ function makeTerminal(x,z,label,kind,sequence){
  const pedestal=new THREE.Mesh(new THREE.BoxGeometry(1.05,1.35,.8),darkMat);pedestal.position.y=.68;group.add(pedestal);
  const screenMesh=new THREE.Mesh(new THREE.BoxGeometry(.9,.72,.12),cyanMat);screenMesh.position.set(0,1.35,-.42);group.add(screenMesh);
  const halo=new THREE.Mesh(new THREE.TorusGeometry(.8,.045,8,24),pinkMat);halo.position.y=1.25;group.add(halo);
- const light=new THREE.PointLight(0x45f6ef,5,5);light.position.y=1.8;group.add(light);
+ const light=new THREE.PointLight(0x45f6ef,5,5);light.position.y=1.8;addDecorativeLight(group,light);
  const obj={group,label,kind,sequence,solved:false};interactables.push(obj);return obj;
 }
 makeTerminal(-4,-23,"CIRCUIT ROUTER","circuit",[1,3,2]);
@@ -289,7 +292,7 @@ for(let i=0;i<3;i++){const gen=new THREE.Group();gen.position.set(i===0?-6:i===1
 // Optional timed side mission: recover two scattered data fragments before the signal window closes.
 const sideBeacon=new THREE.Group();sideBeacon.position.set(-6,.15,-8);world.add(sideBeacon);
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(.9,.07,8,24),pinkMat);beaconRing.rotation.x=Math.PI/2;sideBeacon.add(beaconRing);
-const beaconLight=new THREE.PointLight(0xff4fd8,5,5);beaconLight.position.y=1;sideBeacon.add(beaconLight);
+const beaconLight=new THREE.PointLight(0xff4fd8,5,5);beaconLight.position.y=1;addDecorativeLight(sideBeacon,beaconLight);
 let sideMissionState="available",sideMissionTime=0,sideMissionCount=0;
 const extraFragments=[];
 for(const [x,y,z] of [[-6,1.1,-14],[6,1.3,-44],[-6,1.4,-66],[6,1.2,-99]]){const shard=new THREE.Mesh(new THREE.IcosahedronGeometry(.34,0),pinkMat);shard.position.set(x,y,z);world.add(shard);extraFragments.push({mesh:shard,taken:false});}
@@ -330,7 +333,7 @@ let bridgeCollisionEnabled=false,liftCollisionEnabled=false;
 const keys=new Set(), touch=new Set();
 let stickVector={x:0,y:0},stickPointer=null;
 const stick=document.querySelector("#move-stick"),stickKnob=document.querySelector("#stick-knob");
-function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;/* Pointer coordinates and the joystick are both in visible screen space, including the CSS-rotated fallback. */let dx=e.clientX-cx,dy=e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:THREE.MathUtils.clamp(dx/max,-1,1),y:THREE.MathUtils.clamp(dy/max,-1,1)};stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}
+function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:THREE.MathUtils.clamp(dx/max,-1,1),y:THREE.MathUtils.clamp(dy/max,-1,1)};const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;const localX=rotated?dy:dx,localY=rotated?-dx:dy;stickKnob.style.transform=`translate(${localX}px,${localY}px)`;}
 stick.addEventListener("pointerdown",e=>{e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);updateStick(e);});
 stick.addEventListener("pointermove",e=>{if(e.pointerId===stickPointer)updateStick(e);});
 function releaseStick(){stickPointer=null;stickVector={x:0,y:0};stickKnob.style.transform="translate(0,0)";}
