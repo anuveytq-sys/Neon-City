@@ -1,27 +1,32 @@
-// Mobile stability patch: keep the existing gameplay controller intact while correcting
-// the visual thumb position in the CSS-rotated iOS fallback and preventing a stuck boot overlay.
+// Mobile startup safety patch.
+// Orientation/joystick coordinates are handled by the dedicated CSS override so the
+// existing game controller and the visible touch HUD share one screen-space coordinate system.
 (() => {
-  const hideBoot = () => document.querySelector('#loading-screen')?.classList.add('hidden');
-  window.addEventListener('load', () => setTimeout(hideBoot, 900), { once:true });
-  setTimeout(hideBoot, 1400);
+  const loading = document.querySelector('#loading-screen');
+  const finishBoot = () => {
+    if (!loading) return;
+    loading.classList.add('boot-complete');
+    loading.classList.add('hidden');
+  };
+
+  // Never leave the full-screen boot layer sitting above the title/game UI.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(finishBoot, 250), { once: true });
+  } else {
+    setTimeout(finishBoot, 250);
+  }
+  window.addEventListener('load', finishBoot, { once: true });
+  setTimeout(finishBoot, 1200);
 
   const stick = document.querySelector('#move-stick');
   const knob = document.querySelector('#stick-knob');
   if (!stick || !knob) return;
 
-  const rotatedFallback = () => matchMedia('(pointer: coarse)').matches && innerHeight > innerWidth && innerWidth <= 800;
-  const screenToControl = (dx,dy) => rotatedFallback() ? { x:dy, y:-dx } : { x:dx, y:dy };
-  const paintKnob = (e) => {
-    const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-    let dx=e.clientX-cx,dy=e.clientY-cy;
-    const max=Math.min(r.width,r.height)*.34,len=Math.hypot(dx,dy);
-    if(len>max){dx=dx/len*max;dy=dy/len*max;}
-    const p=screenToControl(dx,dy);
-    knob.style.transform=`translate(${p.x}px,${p.y}px)`;
-  };
-  const repaintAfterGameHandler=(e)=>requestAnimationFrame(()=>paintKnob(e));
-  stick.addEventListener('pointerdown',repaintAfterGameHandler,{passive:false});
-  stick.addEventListener('pointermove',repaintAfterGameHandler,{passive:false});
-  const reset=()=>requestAnimationFrame(()=>{knob.style.transform='translate(0,0)';});
-  stick.addEventListener('pointerup',reset);stick.addEventListener('pointercancel',reset);stick.addEventListener('lostpointercapture',reset);
+  // main.js owns the joystick state. Do not apply a second coordinate transform here.
+  // The portrait fallback counter-rotates #touch-controls in CSS, so clientX/clientY
+  // and getBoundingClientRect() now describe the same visible screen space.
+  const reset = () => { knob.style.transform = 'translate(0,0)'; };
+  stick.addEventListener('pointerup', reset);
+  stick.addEventListener('pointercancel', reset);
+  stick.addEventListener('lostpointercapture', reset);
 })();
