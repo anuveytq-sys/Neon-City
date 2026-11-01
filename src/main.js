@@ -220,7 +220,7 @@ function solvePuzzle(item){
 document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
 document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
 function tryInteract(){if(!playerState.active||playerState.paused)return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
-const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};
+const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};platforms.push(liftPlatform);\nconst bridgeColliders=bridgeParts.map((p,i)=>{const x=-4+i*2;const collider={minX:x-1.05,maxX:x+1.05,minY:-.18,maxY:.04,minZ:-61.1,maxZ:-58.9};platforms.push(collider);return collider;});
 \n// Input
 const keys=new Set(), touch=new Set();
 let stickVector={x:0,y:0},stickPointer=null;
@@ -284,9 +284,9 @@ function update(dt,time){
   portal.rotation.y+=dt*.3;ring.rotation.z+=dt*.5;ring2.rotation.z-=dt*.4;
   generators.forEach((g,i)=>{g.rotation.y+=dt*(.35+i*.1);});
   if(gateOpen){gateGroup.position.y=THREE.MathUtils.damp(gateGroup.position.y,7,3,dt);gatePanel.material=cyanMat;}
-  if(lift.userData.active){lift.position.y=-.1+Math.sin(time*1.3)*1.2;}
+  if(lift.userData.active){lift.position.y=-.1+Math.sin(time*1.3)*1.2;liftPlatform.minY=lift.position.y-.23;liftPlatform.maxY=lift.position.y+.23;}
   if(hiddenDoor.userData.open)hiddenDoor.position.y=THREE.MathUtils.damp(hiddenDoor.position.y,5,2,dt);
-  bridgeParts.forEach((p,i)=>{p.position.y=bridgeGroup.visible?Math.sin(time*2+i*.4)*.07:0;});
+  bridgeParts.forEach((p,i)=>{p.position.y=bridgeGroup.visible?Math.sin(time*2+i*.4)*.07:0;bridgeColliders[i].minY=p.position.y-.11;bridgeColliders[i].maxY=p.position.y+.11;});
   extraFragments.forEach((f,i)=>{if(!f.taken){f.mesh.rotation.y+=dt;f.mesh.position.y=1.2+Math.sin(time*2+i)*.16;}});
 
   if(!playerState.active||playerState.paused||playerState.won)return;
