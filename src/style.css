@@ -10,14 +10,6 @@
 @media(max-width:650px){.screen{padding:28px}.screen h1{font-size:58px}.title-meta{gap:10px;flex-direction:column}.title-foot{font-size:8px}.hud-mission strong{font-size:10px}.hud-stats strong{font-size:12px}.hud-brand{font-size:18px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
-/* Mobile landscape fallback: rotate the complete game viewport when the browser cannot lock orientation (notably iOS Safari). */
-@media (orientation: portrait) and (max-width: 800px) {
-  #app { position: fixed; width: 100dvh; height: 100vw; top: calc((100dvh - 100vw) / 2); left: calc((100vw - 100dvh) / 2); transform: rotate(90deg); transform-origin: center center; overflow: hidden; }
-  #game-root, #game-root canvas { width: 100%; height: 100%; }
-  #hud, #touch-controls { visibility: visible; }
-  .screen { padding: clamp(22px, 6vw, 64px); }
-}
-
 
 /* Phase 2: larger, clearer touch targets and camera-swipe affordance on mobile. */
 #game-root canvas { touch-action: none; }
