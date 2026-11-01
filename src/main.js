@@ -76,22 +76,48 @@ const ring=new THREE.Mesh(new THREE.TorusGeometry(2.1,.16,12,48),cyanMat);portal
 const ring2=new THREE.Mesh(new THREE.TorusGeometry(1.65,.06,8,48),pinkMat);portal.add(ring2);
 const portalLight=new THREE.PointLight(0x38f6ff,45,18);portalLight.position.set(0,1,0);portal.add(portalLight);
 
-// Player character: stylised 3D runner.
+// Detailed human-proportioned runner: visible facial features, layered hair, fitted clothing and articulated limbs.
 const player = new THREE.Group(); world.add(player);
-const body = new THREE.Mesh(new THREE.CapsuleGeometry(.48,.85,5,10),mat(0x222e4c)); body.position.y=1.05; body.castShadow=true;player.add(body);
-const head = new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),mat(0xffc7ad));head.position.y=1.95;player.add(head);
-const hair = new THREE.Mesh(new THREE.SphereGeometry(.37,16,12,0,Math.PI*2,0,Math.PI*.62),mat(0x171326));hair.position.y=2.08;player.add(hair);
-const visor = new THREE.Mesh(new THREE.BoxGeometry(.48,.12,.1),cyanMat);visor.position.set(0,1.99,-.3);player.add(visor);
-const stripe = new THREE.Mesh(new THREE.BoxGeometry(.72,.13,.54),pinkMat);stripe.position.set(0,1.25,0);player.add(stripe);
-const limbMat=mat(0x263653), jointMat=mat(0x111a2d);
-const limbGeo=new THREE.CapsuleGeometry(.13,.48,4,8);
-const arms=[],legs=[];
+const skinMat=mat(0xc98f70,0x160805,.72), skinLight=mat(0xe0aa89,0x120704,.68);
+const hairMat=mat(0x17121d), hairLight=mat(0x30243a), jacketMat=mat(0x18263d), jacketLight=mat(0x344b68), trimMat=mat(0x45dfe2,0x087d88), pantsMat=mat(0x111a2b), bootMat=mat(0x0a101c), eyeWhite=mat(0xf0e9df), irisMat=mat(0x39bfc7), mouthMat=mat(0x633b39);
+const sphereGeo=new THREE.SphereGeometry(1,24,18);
+function personPart(geometry,material,position,scale){const mesh=new THREE.Mesh(geometry,material);mesh.position.set(...position);if(scale)mesh.scale.set(...scale);mesh.castShadow=true;mesh.receiveShadow=true;player.add(mesh);return mesh;}
+const body=personPart(new THREE.CapsuleGeometry(.31,.72,7,14),jacketMat,[0,1.12,0],[1,1,1]);
+personPart(new THREE.CapsuleGeometry(.29,.24,5,12),pantsMat,[0,.57,.015]);
+personPart(new THREE.CylinderGeometry(.115,.13,.2,16),skinMat,[0,1.69,0]);
+const head=personPart(sphereGeo,skinMat,[0,1.91,-.015],[.255,.325,.235]);
+// Face points toward -Z: eyes, brows, nose bridge, nostrils and mouth are separate readable features.
 for(const side of [-1,1]){
-  const arm=new THREE.Mesh(limbGeo,limbMat);arm.position.set(side*.48,1.25,0);arm.rotation.z=side*.12;player.add(arm);arms.push(arm);
-  const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.16,.48,4,8),jointMat);leg.position.set(side*.22,.53,0);player.add(leg);legs.push(leg);
+  personPart(sphereGeo,eyeWhite,[side*.092,1.965,-.222],[.047,.035,.018]);
+  personPart(sphereGeo,irisMat,[side*.092,1.965,-.24],[.021,.024,.012]);
+  personPart(sphereGeo,hairMat,[side*.092,2.015,-.235],[.052,.014,.014]);
+  personPart(sphereGeo,skinLight,[side*.263,1.91,-.005],[.055,.085,.045]);
 }
-const footGeo=new THREE.BoxGeometry(.3,.18,.5);const feet=[];
-for(const x of [-.25,.25]){const f=new THREE.Mesh(footGeo,mat(0x101827));f.position.set(x,.12,0);player.add(f);feet.push(f);}
+personPart(new THREE.ConeGeometry(.055,.13,10),skinLight,[0,1.91,-.258],[.72,1,.72]).rotation.x=-Math.PI/2;
+personPart(new THREE.BoxGeometry(.105,.025,.018),mouthMat,[0,1.815,-.231]);
+personPart(sphereGeo,skinMat,[0,1.78,-.205],[.09,.045,.045]);
+// Hair cap and swept fringe create a clear silhouette instead of a blank oval head.
+personPart(sphereGeo,hairMat,[0,2.105,-.005],[.27,.19,.245]);
+for(const [x,y,z,sc] of [[-.17,2.08,-.11,[.12,.13,.15]],[.12,2.09,-.13,[.13,.12,.14]],[0,2.13,-.17,[.18,.1,.12]],[-.2,1.99,.02,[.07,.16,.12]],[.2,1.99,.02,[.07,.16,.12]]])personPart(sphereGeo,hairLight,[x,y,z],sc);
+personPart(new THREE.BoxGeometry(.5,.055,.045),trimMat,[0,1.57,-.27]);
+const collar=personPart(new THREE.CylinderGeometry(.17,.2,.13,12),jacketLight,[0,1.59,0]);collar.rotation.x=.08;
+const chestPanel=personPart(new THREE.BoxGeometry(.27,.38,.035),jacketLight,[0,1.22,-.295]);
+personPart(new THREE.BoxGeometry(.055,.31,.025),trimMat,[.105,1.22,-.32]);
+const belt=personPart(new THREE.BoxGeometry(.55,.1,.34),pantsMat,[0,.76,0]);
+const limbMat=jacketMat, jointMat=skinMat;
+const limbGeo=new THREE.CapsuleGeometry(.115,.43,6,12);
+const arms=[],legs=[],hands=[];
+for(const side of [-1,1]){
+  const shoulder=personPart(sphereGeo,jacketLight,[side*.34,1.42,0],[.17,.18,.17]);
+  const arm=new THREE.Mesh(limbGeo,limbMat);arm.position.set(side*.43,1.18,0);arm.rotation.z=-side*.08;arm.castShadow=true;player.add(arm);arms.push(arm);
+  const cuff=personPart(new THREE.CylinderGeometry(.12,.12,.1,12),trimMat,[side*.46,.91,0]);cuff.rotation.z=Math.PI/2;
+  const hand=personPart(sphereGeo,skinMat,[side*.47,.82,-.005],[.105,.13,.09]);hands.push(hand);
+  const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.145,.48,6,12),pantsMat);leg.position.set(side*.19,.48,.015);leg.castShadow=true;player.add(leg);legs.push(leg);
+  personPart(sphereGeo,jacketLight,[side*.19,.23,-.015],[.16,.13,.17]);
+}
+const footGeo=new THREE.BoxGeometry(.27,.17,.43);const feet=[];
+for(const x of [-.2,.2]){const f=new THREE.Mesh(footGeo,bootMat);f.position.set(x,.105,-.055);f.castShadow=true;player.add(f);feet.push(f);}
+
 const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,y:0,z:0},active:false,paused:false,won:false};
 player.position.set(0,0,1);
 
@@ -304,7 +330,7 @@ let bridgeCollisionEnabled=false,liftCollisionEnabled=false;
 const keys=new Set(), touch=new Set();
 let stickVector={x:0,y:0},stickPointer=null;
 const stick=document.querySelector("#move-stick"),stickKnob=document.querySelector("#stick-knob");
-function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;let dx=rotated?e.clientY-cy:e.clientX-cx,dy=rotated?-(e.clientX-cx):e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:THREE.MathUtils.clamp(dx/max,-1,1),y:THREE.MathUtils.clamp(dy/max,-1,1)};stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}
+function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;/* Pointer coordinates and the joystick are both in visible screen space, including the CSS-rotated fallback. */let dx=e.clientX-cx,dy=e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:THREE.MathUtils.clamp(dx/max,-1,1),y:THREE.MathUtils.clamp(dy/max,-1,1)};stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}
 stick.addEventListener("pointerdown",e=>{e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);updateStick(e);});
 stick.addEventListener("pointermove",e=>{if(e.pointerId===stickPointer)updateStick(e);});
 function releaseStick(){stickPointer=null;stickVector={x:0,y:0};stickKnob.style.transform="translate(0,0)";}
@@ -347,7 +373,7 @@ let toastTimer;
 function showToast(text){toast.textContent=text;toast.style.opacity="1";clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity="0",1400);}
 function updateHUD(){const restored=interactables.filter(item=>item.solved).length;coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";const inventoryLabel=document.querySelector("#inventory-count");if(inventoryLabel)inventoryLabel.textContent="CARD "+playerState.inventory.cards+" · MOD "+playerState.inventory.upgrades+" · LOG "+playerState.inventory.recordings+" · RARE "+playerState.inventory.rare;const sideLabel=document.querySelector("#side-mission");if(sideLabel)sideLabel.textContent=sideMissionState==="available"?"OPTIONAL: FIND THE PINK DATA BEACON":sideMissionState==="active"?"OPTIONAL DATA RECOVERY · "+Math.ceil(sideMissionTime)+"s · "+sideMissionCount+"/2":sideMissionState==="complete"?"OPTIONAL MISSION COMPLETE":"OPTIONAL MISSION EXPIRED";progressFill.style.width=((playerState.cores/8)*70+(restored/3)*30)+"%";objective.textContent=restored<3?"Restore city systems · "+restored+" / 3 networks online":playerState.cores<8?"Power cells secured · "+playerState.cores+" / 8":"All systems online · reach the extraction portal";}
 async function requestLandscape(){try{if(screen.orientation?.lock)await screen.orientation.lock("landscape");}catch(_error){/* iOS Safari and some browsers use the CSS-rotated landscape fallback. */}}
-function startGame(){requestLandscape();title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;}
+function startGame(){requestLandscape();phase4.begin();title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;resizeGame();}
 function togglePause(force){if(!playerState.active)return;playerState.paused=force??!playerState.paused;pauseScreen.classList.toggle("hidden",!playerState.paused);}
 function restart(){
  playerState.cores=0;playerState.health=100;playerState.energy=100;playerState.inventory={cards:0,upgrades:0,recordings:0,rare:0};
@@ -370,9 +396,25 @@ document.querySelector("#pause-button").addEventListener("click",()=>togglePause
 document.querySelector("#resume-button").addEventListener("click",()=>togglePause(false));
 document.querySelector("#restart-button").addEventListener("click",restart);
 document.querySelector("#again-button").addEventListener("click",restart);
-function resizeGame(){const viewport=gameViewport();camera.aspect=viewport.width/viewport.height;camera.updateProjectionMatrix();renderer.setSize(viewport.width,viewport.height);renderer.setPixelRatio(Math.min(devicePixelRatio,isTouch?1.5:2));}
-addEventListener("resize",resizeGame);
-addEventListener("orientationchange",()=>setTimeout(resizeGame,180));
+let resizeTimer=0;
+function resizeGame(){
+  clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{
+    const viewport=gameViewport();
+    camera.aspect=viewport.width/viewport.height;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,isTouch?1.5:2));
+    renderer.setSize(viewport.width,viewport.height,false);
+    renderer.domElement.style.width="100%";
+    renderer.domElement.style.height="100%";
+    /* Keep the camera's world-space follow target; only projection and drawing-buffer dimensions change. */
+    if(playerState.active){const d=isTouch?8.2:9.2;camera.position.set(player.position.x+Math.sin(cameraYaw)*d,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*d);camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);}
+  },80);
+}
+addEventListener("resize",resizeGame,{passive:true});
+addEventListener("orientationchange",resizeGame,{passive:true});
+screen.orientation?.addEventListener?.("change",resizeGame);
+visualViewport?.addEventListener?.("resize",resizeGame,{passive:true});
 function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=stickVector.x!==0?stickVector.x:(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
 const clock=new THREE.Clock();
 function update(dt,time){

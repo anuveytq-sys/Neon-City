@@ -80,10 +80,7 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
       bosses.push({group:bossGroup,shell,eye,halo,world:i,hp:i===5?420:100,maxHp:i===5?420:100,phase:0,cooldown:2,defeated:false,attack:0});
     }
   }
-  // Arrival point for the first world is separate from the original district.
-  player.position.set(centers[0].x,0,centers[0].z+10);
-  state.x=player.position.x;state.y=0;state.z=player.position.z;
-  state.checkpoint={x:state.x,y:0,z:state.z};
+  // The title screen must remain untouched; move into Phase 4 only after START RUN.
   function enter(index){
     active=index;const c=centers[index];player.position.set(c.x,0,c.z+10);
     state.x=player.position.x;state.y=0;state.z=player.position.z;state.vx=state.vy=state.vz=0;
@@ -118,6 +115,7 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     }
     if(active===5&&bosses[5].defeated&&finalHack&&!completed){completed=true;showToast("CHRONICLE COMPLETE · NEXUS NETWORK RESTORED");status.textContent="PHASE 4 COMPLETE · ALL SIX WORLDS RESTORED";}
   }
+  function begin(){enter(0);}
   function reset(){for(const s of systems){s.solved=false;s.progress=0;}for(const b of bosses){b.hp=b.maxHp;b.phase=0;b.defeated=false;b.group.visible=true;b.attack=0;b.cooldown=2;}finalHack=false;completed=false;enter(0);}
-  return {update,interact,reset,get activeWorld(){return active;},get completed(){return completed;}};
+  return {begin,update,interact,reset,get activeWorld(){return active;},get completed(){return completed;}};
 }
