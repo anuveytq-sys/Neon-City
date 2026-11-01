@@ -184,7 +184,8 @@ const gateGroup=new THREE.Group();gateGroup.position.set(0,2.15,-47);world.add(g
 const gateFrame=new THREE.Mesh(new THREE.BoxGeometry(7,4.3,.5),darkMat);gateGroup.add(gateFrame);
 const gatePanel=new THREE.Mesh(new THREE.BoxGeometry(6.5,3.9,.24),pinkMat);gatePanel.position.z=.32;gateGroup.add(gatePanel);
 const gateGlow=new THREE.Mesh(new THREE.BoxGeometry(6.2,.12,.08),cyanMat);gateGlow.position.set(0,0,.5);gateGroup.add(gateGlow);
-let gateOpen=false;\nconst gateCollider={minX:-3.25,maxX:3.25,minY:0,maxY:4.3,minZ:-47.28,maxZ:-46.72};platforms.push(gateCollider);
+let gateOpen=false;
+const gateCollider={minX:-3.25,maxX:3.25,minY:0,maxY:4.3,minZ:-47.28,maxZ:-46.72};platforms.push(gateCollider);
 const bridgeGroup=new THREE.Group();bridgeGroup.position.set(0,-.05,-60);world.add(bridgeGroup);
 const bridgeParts=[];
 for(let i=0;i<5;i++){const plank=new THREE.Mesh(new THREE.BoxGeometry(2.1,.22,2.2),i%2?cyanMat:pinkMat);plank.position.set(-4+i*2,0,0);bridgeGroup.add(plank);bridgeParts.push(plank);}
@@ -220,8 +221,10 @@ function solvePuzzle(item){
 document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
 document.querySelector("#puzzle-close").addEventListener("click",closePuzzle);
 function tryInteract(){if(!playerState.active||playerState.paused)return;let closest=null,dist=3.1;for(const item of interactables){if(item.solved)continue;const d=player.position.distanceTo(item.group.position);if(d<dist){dist=d;closest=item;}}if(closest){openPuzzle(closest);return;}showToast("NO INTERACTIVE SYSTEM IN RANGE");}
-const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};platforms.push(liftPlatform);\nconst bridgeColliders=bridgeParts.map((p,i)=>{const x=-4+i*2;const collider={minX:x-1.05,maxX:x+1.05,minY:-.18,maxY:.04,minZ:-61.1,maxZ:-58.9};platforms.push(collider);return collider;});
-\n// Input
+const liftPlatform={minX:2.4,maxX:5.6,minY:-.32,maxY:.12,minZ:-74.6,maxZ:-71.4};platforms.push(liftPlatform);
+const bridgeColliders=bridgeParts.map((p,i)=>{const x=-4+i*2;const collider={minX:x-1.05,maxX:x+1.05,minY:-.18,maxY:.04,minZ:-61.1,maxZ:-58.9};platforms.push(collider);return collider;});
+
+// Input
 const keys=new Set(), touch=new Set();
 let stickVector={x:0,y:0},stickPointer=null;
 const stick=document.querySelector("#move-stick"),stickKnob=document.querySelector("#stick-knob");
