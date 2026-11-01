@@ -31,3 +31,22 @@
 @media (orientation:portrait) and (max-width:800px) {
   #touch-controls { padding-bottom:max(12px,env(safe-area-inset-bottom)); }
 }
+
+
+/* Phase 3: thumb joystick, contextual interaction and terminal puzzle UI. */
+#touch-controls{inset:auto 0 14px;align-items:flex-end;padding:0 max(24px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));}
+.move-stick{position:relative;width:132px;height:132px;border-radius:50%;touch-action:none;pointer-events:auto;display:grid;place-items:center;background:radial-gradient(circle,rgba(42,77,108,.36),rgba(5,14,32,.58));border:1px solid rgba(95,247,237,.42);box-shadow:0 0 26px rgba(45,239,255,.13),inset 0 0 22px rgba(45,239,255,.12);user-select:none;-webkit-user-select:none;}
+.stick-ring{position:absolute;inset:18px;border-radius:50%;border:1px dashed rgba(95,247,237,.25);}
+.stick-knob{position:absolute;width:54px;height:54px;border-radius:50%;background:linear-gradient(145deg,#6ffcf2,#168d9d);border:2px solid #bafffa;box-shadow:0 0 20px #42f5e9aa;pointer-events:none;transform:translate(0,0);}
+.right-actions{display:flex;align-items:flex-end;gap:16px;pointer-events:auto;}
+.action-button{width:64px;height:64px;border-radius:50%;border:1px solid #ff4fd8aa;background:#2b1232dd;color:#fff;font:700 10px Orbitron;opacity:.55;pointer-events:auto;touch-action:none;}
+.action-button.available{opacity:1;background:#8c246f;box-shadow:0 0 24px #ff4fd8aa;animation:usePulse 1s infinite alternate;}
+@keyframes usePulse{to{box-shadow:0 0 34px #ff4fd8;}}
+.puzzle-panel{position:absolute;z-index:12;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,88vw);padding:28px;background:rgba(5,12,29,.96);border:1px solid #5ff7ed88;box-shadow:0 0 55px #21eaff33;display:flex;flex-direction:column;align-items:flex-start;gap:14px;}
+.puzzle-panel h2{font:800 clamp(22px,5vw,34px) Orbitron;margin:0;color:#f5f7ff;}
+.puzzle-panel p{font:600 12px Orbitron;letter-spacing:.12em;color:#7dfbf0;}
+.puzzle-buttons{display:flex;gap:12px;width:100%;}
+.puzzle-buttons button{flex:1;min-height:64px;border:1px solid #45f6ef88;background:#10233a;color:#dff;font:800 18px Orbitron;touch-action:manipulation;}
+.puzzle-buttons button.selected{background:#176d70;box-shadow:0 0 18px #5ff7ed;}
+.puzzle-panel .secondary-button{margin-top:4px;}
+@media(max-width:650px){.move-stick{width:118px;height:118px}.stick-knob{width:50px;height:50px}.action-button{width:56px;height:56px}.right-actions{gap:10px}}
