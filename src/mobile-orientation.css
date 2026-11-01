@@ -1,5 +1,28 @@
-/* Mobile boot guard only. The existing #app landscape fallback in style.css
-   rotates the complete interface as one unit. Do not counter-rotate the touch HUD. */
+/* One coordinate system: rotate the complete game UI together on portrait iOS/Safari.
+   The joystick and action buttons stay inside this same rotated viewport. */
+@media (orientation: portrait) and (max-width: 800px) and (pointer: coarse) {
+  #app {
+    position: fixed !important;
+    width: 100dvh !important;
+    height: 100vw !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) rotate(90deg) !important;
+    transform-origin: center center !important;
+    overflow: hidden !important;
+  }
+  #game-root,
+  #game-root canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #touch-controls {
+    transform: none !important;
+  }
+}
+
 #loading-screen.boot-complete {
   display:none !important;
   pointer-events:none !important;
