@@ -19,8 +19,9 @@
     const p=screenToControl(dx,dy);
     knob.style.transform=`translate(${p.x}px,${p.y}px)`;
   };
-  stick.addEventListener('pointerdown',paintKnob,{passive:false});
-  stick.addEventListener('pointermove',paintKnob,{passive:false});
-  const reset=()=>{knob.style.transform='translate(0,0)';};
+  const repaintAfterGameHandler=(e)=>requestAnimationFrame(()=>paintKnob(e));
+  stick.addEventListener('pointerdown',repaintAfterGameHandler,{passive:false});
+  stick.addEventListener('pointermove',repaintAfterGameHandler,{passive:false});
+  const reset=()=>requestAnimationFrame(()=>{knob.style.transform='translate(0,0)';});
   stick.addEventListener('pointerup',reset);stick.addEventListener('pointercancel',reset);stick.addEventListener('lostpointercapture',reset);
 })();
