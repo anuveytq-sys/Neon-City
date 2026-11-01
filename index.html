@@ -15,7 +15,7 @@
         <div class="title-kicker">A NEON CITY ORIGINAL</div>
         <h1>NEON<br><em>VELOCITY</em></h1>
         <p class="title-copy">The city went dark. Bring its heartbeat back.</p>
-        <div class="title-meta"><span>3D PARKOUR ADVENTURE</span><span>CHAPTER 01 — NEON DISTRICT</span></div>
+        <div class="title-meta"><span>OPEN-WORLD CYBERPUNK PARKOUR</span><span>CHAPTER 01 — NEON CITY</span></div>
         <button id="play-button" class="primary-button">START RUN <b>↗</b></button>
         <div class="title-foot">MOVE · JUMP · SWIPE TO LOOK · EXPLORE</div>
       </section>
@@ -26,7 +26,7 @@
           <div class="hud-stats"><span>ENERGY CORES</span><strong id="core-count">00 / 08</strong></div>
           <button id="pause-button" class="icon-button" aria-label="Pause">Ⅱ</button>
         </div>
-        <div class="hud-bottom"><div><small>OBJECTIVE</small><strong id="objective">Collect the 8 energy cores</strong></div><div class="progress-track"><i id="progress-fill"></i></div></div>
+        <div class="hud-bottom"><div><small>OBJECTIVE</small><strong id="objective">Restore city systems and explore Neon District</strong></div><div class="progress-track"><i id="progress-fill"></i></div></div>
         <div id="toast" role="status" aria-live="polite"></div>
       </section>
       <section id="pause-screen" class="screen hidden">
@@ -41,9 +41,16 @@
         <button id="again-button" class="primary-button">PLAY AGAIN <b>↗</b></button>
       </section>
       <div id="touch-controls" class="hidden">
-        <div class="move-pad"><button data-move="forward" aria-label="Move forward">▲</button><div><button data-move="left" aria-label="Move left">◀</button><button data-move="back" aria-label="Move backward">▼</button><button data-move="right" aria-label="Move right">▶</button></div></div>
-        <button id="jump-button" class="jump-button">JUMP</button>
+        <div id="move-stick" class="move-stick" aria-label="Drag joystick to move"><div class="stick-ring"></div><div id="stick-knob" class="stick-knob"></div></div>
+        <div class="right-actions"><button id="interact-button" class="action-button" aria-label="Interact">USE</button><button id="jump-button" class="jump-button">JUMP</button></div>
       </div>
+      <section id="puzzle-panel" class="puzzle-panel hidden">
+        <div class="title-kicker">NEURAL ACCESS INTERFACE</div>
+        <h2 id="puzzle-title">SYSTEM TERMINAL</h2>
+        <p id="puzzle-status">TRACE THE SIGNAL SEQUENCE</p>
+        <div class="puzzle-buttons"><button data-puzzle="1">01</button><button data-puzzle="2">02</button><button data-puzzle="3">03</button></div>
+        <button id="puzzle-close" class="secondary-button">CLOSE TERMINAL</button>
+      </section>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
