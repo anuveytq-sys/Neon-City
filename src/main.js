@@ -228,6 +228,12 @@ const gateFrame=new THREE.Mesh(new THREE.BoxGeometry(7,4.3,.5),darkMat);gateGrou
 const gatePanel=new THREE.Mesh(new THREE.BoxGeometry(6.5,3.9,.24),pinkMat);gatePanel.position.z=.32;gateGroup.add(gatePanel);
 const gateGlow=new THREE.Mesh(new THREE.BoxGeometry(6.2,.12,.08),cyanMat);gateGlow.position.set(0,0,.5);gateGroup.add(gateGlow);
 let gateOpen=false;
+const laserGrid=new THREE.Group();laserGrid.position.set(0,1.45,-40);world.add(laserGrid);
+const laserMaterial=mat(0xff315f,0xff1748);
+const laserBeam=new THREE.Mesh(new THREE.BoxGeometry(15,.075,.075),laserMaterial);laserGrid.add(laserBeam);
+const laserMirrors=[];
+for(const x of [-4.5,0,4.5]){const mirror=new THREE.Mesh(new THREE.BoxGeometry(.5,.85,.18),cyanMat);mirror.position.set(x,0,.25);laserGrid.add(mirror);laserMirrors.push(mirror);}
+let laserRedirected=false,laserDamageTimer=0;
 const gateCollider={minX:-3.25,maxX:3.25,minY:0,maxY:4.3,minZ:-47.28,maxZ:-46.72};platforms.push(gateCollider);
 const bridgeGroup=new THREE.Group();bridgeGroup.position.set(0,-.05,-60);world.add(bridgeGroup);
 const bridgeParts=[];
@@ -281,7 +287,7 @@ function solvePuzzle(item){
  if(item.kind==="circuit"){gateOpen=true;gateGroup.userData.open=true;}
  if(item.kind==="sequence"){bridgeGroup.visible=true;lift.userData.active=true;if(!bridgeCollisionEnabled){platforms.push(...bridgeColliders);bridgeCollisionEnabled=true;}if(!liftCollisionEnabled){platforms.push(liftPlatform);liftCollisionEnabled=true;}}
  if(item.kind==="sync"){hiddenDoor.userData.open=true;hiddenPanel.visible=false;}
- if(item.kind==="laser"){cameras.forEach(camera=>camera.disabled=true);showToast("SECURITY CAMERAS OFFLINE");}
+ if(item.kind==="laser"){cameras.forEach(camera=>camera.disabled=true);laserRedirected=true;laserBeam.material=cyanMat;laserGrid.position.y=4.8;laserMirrors.forEach((mirror,i)=>{mirror.rotation.z=(i%2?1:-1)*Math.PI/4;});showToast("LASER GRID REDIRECTED · CAMERAS OFFLINE");}
  if(item.kind==="timed"){powerNetworkOnline=true;generators.forEach(g=>g.scale.setScalar(1.25));showToast("POWER DISTRIBUTION RESTORED");}updateHUD();
 }
 document.querySelectorAll("[data-puzzle]").forEach(button=>button.addEventListener("click",()=>{if(!puzzleTarget)return;if(puzzleTarget.kind==="timed"&&Date.now()>puzzleDeadline){puzzleProgress=0;puzzleDeadline=Date.now()+9000;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="TIMEOUT · SEQUENCE RESET · 9 SECONDS";return;}const input=Number(button.dataset.puzzle);if(input===puzzleTarget.sequence[puzzleProgress]){button.classList.add("selected");puzzleProgress++;puzzleStatus.textContent="SIGNAL MATCH "+puzzleProgress+" / "+puzzleTarget.sequence.length;if(puzzleProgress>=puzzleTarget.sequence.length)solvePuzzle(puzzleTarget);}else{puzzleProgress=0;document.querySelectorAll("[data-puzzle]").forEach(b=>b.classList.remove("selected"));puzzleStatus.textContent="SIGNAL RESET — TRY AGAIN";}}));
@@ -352,7 +358,7 @@ function restart(){
  hiddenDoor.userData.open=false;hiddenDoor.position.y=1.4;hiddenPanel.visible=true;
  extraFragments.forEach(f=>{f.taken=false;f.mesh.visible=true;});sideMissionState="available";sideMissionTime=0;sideMissionCount=0;
  enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.attack=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});
- cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
+ cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});laserRedirected=false;laserDamageTimer=0;laserGrid.position.y=1.45;laserBeam.material=laserMaterial;laserMirrors.forEach(mirror=>mirror.rotation.z=0);powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
  shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
  puzzlePanel.classList.add("hidden");puzzleTarget=null;playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
@@ -378,7 +384,7 @@ function update(dt,time){
   });
   for(let i=shots.length-1;i>=0;i--){
     const shot=shots[i];shot.mesh.position.addScaledVector(shot.velocity,dt);shot.life-=dt;let remove=shot.life<=0;
-    if(!shot.enemy){for(const enemy of enemies){if(enemy.alive&&shot.mesh.position.distanceTo(enemy.group.position.clone().add(new THREE.Vector3(0,.8,0)))<1){enemy.hp-=25;remove=true;showToast("TARGET HIT · "+Math.max(0,enemy.hp)+" HP");if(enemy.hp<=0){enemy.alive=false;showToast("SECURITY UNIT DISABLED");}break;}}}
+    if(!shot.enemy){for(const enemy of enemies){if(enemy.alive&&shot.mesh.position.distanceTo(enemy.group.position.clone().add(new THREE.Vector3(0,.8,0)))<1){enemy.hp-=25+playerState.inventory.upgrades*8;remove=true;showToast("TARGET HIT · "+Math.max(0,enemy.hp)+" HP");if(enemy.hp<=0){enemy.alive=false;showToast("SECURITY UNIT DISABLED");}break;}}}
     else if(shot.mesh.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1,0)))<.9){damagePlayer(12);remove=true;}
     if(remove){world.remove(shot.mesh);shot.mesh.geometry.dispose();shots.splice(i,1);}
   }
@@ -430,6 +436,7 @@ function update(dt,time){
   if(sideMissionState==="active"){sideMissionTime=Math.max(0,sideMissionTime-dt);const timer=document.querySelector("#side-mission");if(timer)timer.textContent="OPTIONAL DATA RECOVERY · "+Math.ceil(sideMissionTime)+"s · "+sideMissionCount+"/2";if(sideMissionTime<=0){sideMissionState="failed";showToast("OPTIONAL MISSION FAILED");}}
   extraFragments.forEach(f=>{if(!f.taken&&player.position.distanceTo(f.mesh.position)<1.2){f.taken=true;f.mesh.visible=false;if(sideMissionState==="active"){sideMissionCount++;if(sideMissionCount>=2){sideMissionState="complete";showToast("OPTIONAL MISSION COMPLETE");}}else showToast("DATA FRAGMENT ACQUIRED");updateHUD();}});
   inventoryItems.forEach(item=>{if(!item.taken&&player.position.distanceTo(item.mesh.position)<1.25){item.taken=true;item.mesh.visible=false;playerState.inventory[item.type==="card"?"cards":item.type==="upgrade"?"upgrades":item.type==="recording"?"recordings":"rare"]++;if(item.type==="upgrade")playerState.energy=Math.min(100,playerState.energy+35);showToast(({card:"ACCESS CARD ACQUIRED",upgrade:"BLASTER MOD ACQUIRED",recording:"MEMORY LOG RECOVERED",rare:"RARE DATA RELIC ACQUIRED"})[item.type]);updateHUD();updateVitals();}});
+  laserDamageTimer=Math.max(0,laserDamageTimer-dt);if(!laserRedirected&&Math.abs(playerState.z+40)<.7&&Math.abs(playerState.x)<7&&laserDamageTimer<=0){damagePlayer(7);laserDamageTimer=.8;}
   cameras.forEach(cameraUnit=>{cameraUnit.group.rotation.y=cameraUnit.disabled?0:Math.sin(time*.65+cameraUnit.group.position.z)*.55;if(!cameraUnit.disabled&&player.position.distanceTo(cameraUnit.group.position)<4&&cameraUnit.alarm<=0){damagePlayer(4);cameraUnit.alarm=2.5;}cameraUnit.alarm=Math.max(0,cameraUnit.alarm-dt);});
   let nearTerminal=false;for(const item of interactables){if(!item.solved&&player.position.distanceTo(item.group.position)<3.1)nearTerminal=true;}
   document.querySelector("#interact-button").classList.toggle("available",nearTerminal);
