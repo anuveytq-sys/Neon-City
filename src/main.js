@@ -113,7 +113,8 @@ createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
 function fireBlaster(){
  if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
  playerState.energy-=12;fireCooldown=.24;
- const dir=new THREE.Vector3(Math.sin(player.rotation.y),0,-Math.cos(player.rotation.y)).normalize();
+ const dir=new THREE.Vector3();camera.getWorldDirection(dir);dir.y=0;if(dir.lengthSq()<.0001)dir.set(Math.sin(cameraYaw),0,-Math.cos(cameraYaw));dir.normalize();
+ player.rotation.y=Math.atan2(dir.x,-dir.z);
  const mesh=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),cyanMat);mesh.position.copy(player.position).add(new THREE.Vector3(0,1.35,0)).addScaledVector(dir,.9);world.add(mesh);
  shots.push({mesh,velocity:dir.multiplyScalar(24),life:1.6,enemy:false});
  updateVitals();
@@ -301,7 +302,7 @@ let bridgeCollisionEnabled=false,liftCollisionEnabled=false;
 const keys=new Set(), touch=new Set();
 let stickVector={x:0,y:0},stickPointer=null;
 const stick=document.querySelector("#move-stick"),stickKnob=document.querySelector("#stick-knob");
-function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=rect.width*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:dx/max,y:dy/max};stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}
+function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;let dx=rotated?e.clientY-cy:e.clientX-cx,dy=rotated?-(e.clientX-cx):e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:THREE.MathUtils.clamp(dx/max,-1,1),y:THREE.MathUtils.clamp(dy/max,-1,1)};stickKnob.style.transform=`translate(${dx}px,${dy}px)`;}
 stick.addEventListener("pointerdown",e=>{e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);updateStick(e);});
 stick.addEventListener("pointermove",e=>{if(e.pointerId===stickPointer)updateStick(e);});
 function releaseStick(){stickPointer=null;stickVector={x:0,y:0};stickKnob.style.transform="translate(0,0)";}

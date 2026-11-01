@@ -66,3 +66,30 @@
 #health-fill{background:#ff4f91;box-shadow:0 0 9px #ff4f91;}
 #inventory-count{display:block;margin-top:7px;font:600 8px Orbitron;color:#5ff7ed;letter-spacing:.1em;}
 .fire-button{border-color:#5ff7edaa;background:#0a3440dd;color:#9ffff8;}
+
+/* Compact, scrollable mission card: anchored below the top HUD and away from thumb controls. */
+#hud{justify-content:flex-start;}
+.hud-bottom{
+ position:absolute;top:clamp(68px,11vh,104px);left:clamp(10px,1.8vw,22px);
+ width:min(228px,34vw);max-width:228px;max-height:clamp(104px,24vh,172px);
+ padding:9px 10px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+ scrollbar-width:thin;scrollbar-color:#5ff7ed66 #101b30;
+ pointer-events:auto;border-radius:7px;background:rgba(5,12,27,.82);
+}
+.hud-bottom>div:first-child{gap:4px;margin:0 0 7px;}
+.hud-bottom small{font-size:7px;letter-spacing:.1em;line-height:1.35;}
+.hud-bottom strong{font-size:9px;line-height:1.35;letter-spacing:.035em;overflow-wrap:anywhere;}
+#inventory-count,#side-mission{font-size:7px;line-height:1.45;letter-spacing:.04em;}
+.vitals{gap:8px;margin:7px 0;max-width:none;}
+.vitals label{font-size:6px;gap:3px;letter-spacing:.04em;}
+.vitals label span{height:3px;}
+.progress-track{height:3px;margin-top:5px;}
+@media(max-width:800px){
+ .hud-bottom{top:66px;left:9px;width:min(190px,40vw);max-height:clamp(92px,23vh,140px);padding:7px 8px;}
+ .hud-bottom strong{font-size:8px;}
+ .hud-bottom small,#inventory-count,#side-mission{font-size:6px;}
+ .vitals{gap:6px;margin:5px 0;}
+}
+@media(orientation:portrait) and (max-width:800px){
+ .hud-bottom{top:62px;left:8px;width:min(188px,39vw);max-height:clamp(92px,22vh,132px);}
+}
