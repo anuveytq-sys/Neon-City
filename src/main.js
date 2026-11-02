@@ -144,6 +144,7 @@ createEnemy("ground", -5,-34,35);createEnemy("ground",5,-66,40);
 createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
 const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals,damagePlayer,getHackingBonus:()=>phase5.hackingBonus(),onBossDefeated:()=>phase5.onBossDefeated(),onDistrictRestored:()=>phase5.onDistrictRestored()});
 const phase5=installPhaseFive({THREE,scene,world,player,state:playerState,showToast,updateHUD,updateVitals});
+let phase4Entered=false;
 function fireBlaster(){
  if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
  playerState.energy-=12;fireCooldown=.24;
@@ -395,7 +396,7 @@ function restart(){
  enemies.forEach(enemy=>{enemy.alive=true;enemy.hp=enemy.maxHp;enemy.defeat=0;enemy.attack=0;enemy.group.scale.setScalar(1);enemy.group.position.set(enemy.baseX,enemy.type==="turret"?.6:0,enemy.baseZ);});
  cameras.forEach(cameraUnit=>{cameraUnit.disabled=false;cameraUnit.alarm=0;});laserRedirected=false;laserDamageTimer=0;laserGrid.position.y=1.45;laserBeam.material=laserMaterial;laserMirrors.forEach(mirror=>mirror.rotation.z=0);powerNetworkOnline=false;generators.forEach(g=>g.scale.setScalar(1));inventoryItems.forEach(item=>{item.taken=false;item.mesh.visible=true;});
  shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
- puzzlePanel.classList.add("hidden");puzzleTarget=null;phase4.reset();playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
+ puzzlePanel.classList.add("hidden");puzzleTarget=null;phase4Entered=false;phase4.reset();playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
 document.querySelector("#play-button").addEventListener("click",startGame);
 document.querySelector("#progress-button")?.addEventListener("click",()=>phase5.openPanel());
@@ -501,7 +502,7 @@ function update(dt,time){
   document.querySelector("#interact-button").classList.toggle("available",nearTerminal);
   if(lift.userData.active&&Math.abs(playerState.x-4)<1.8&&Math.abs(playerState.z+73)<1.8&&playerState.y<lift.position.y+.5){playerState.y=lift.position.y+.35;playerState.vy=Math.max(0,playerState.vy);}
 
-  if(playerState.cores===8&&interactables.every(item=>item.solved)&&enemies.every(enemy=>!enemy.alive)&&powerNetworkOnline&&player.position.distanceTo(portal.position)<3){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
+  if(!phase4Entered&&playerState.cores===8&&interactables.every(item=>item.solved)&&enemies.every(enemy=>!enemy.alive)&&powerNetworkOnline&&player.position.distanceTo(portal.position)<3){phase4Entered=true;phase4.begin();showToast("NEON DISTRICT RESTORED · SIX-DISTRICT NETWORK UNLOCKED");}if(phase4Entered&&phase4.completed){playerState.won=true;playerState.active=false;hud.classList.add("hidden");touchControls.classList.add("hidden");winScreen.classList.remove("hidden");}
   const followDistance=isTouch?8.2:9.2;
   const target=new THREE.Vector3(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);
   camera.position.lerp(target,1-Math.exp(-7*dt));camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);
