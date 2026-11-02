@@ -5,7 +5,7 @@ import * as THREE from "three";
  * interactable systems, hazards, enemy encounters and a multi-stage NEXUS boss.
  * Uses the existing scene/player/physics/combat systems rather than replacing them.
  */
-export function installPhaseFour({THREE: T, scene, world, player, state, platforms, shots, showToast, updateVitals, damagePlayer, onBossDefeated, onDistrictRestored}) {
+export function installPhaseFour({THREE: T, scene, world, player, state, platforms, shots, showToast, updateVitals, damagePlayer, getHackingBonus, onBossDefeated, onDistrictRestored}) {
   const mat=(c,e=0)=>new T.MeshStandardMaterial({color:c,emissive:e,emissiveIntensity:e?1.5:0,metalness:.35,roughness:.48});
   const mobile=matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;
   const palette=[
@@ -88,8 +88,8 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     let nearest=null,d=3.6;
     for(const s of systems){if(s.world!==active||s.solved)continue;const q=s.group.getWorldPosition(new T.Vector3()),dist=p.distanceTo(q);if(dist<d){d=dist;nearest=s;}}
     if(nearest){
-      nearest.progress=(nearest.progress+1)%4;
-      if(nearest.progress===nearest.sequence.length){nearest.solved=true;showToast(names[active]+" · SYSTEM OVERRIDE COMPLETE");if(systems.filter(s=>s.world===active&&s.solved).length===2&&onDistrictRestored)onDistrictRestored();}
+      nearest.progress+=1+Math.floor((getHackingBonus?getHackingBonus():0)/2);
+      if(nearest.progress>=nearest.sequence.length){nearest.solved=true;showToast(names[active]+" · SYSTEM OVERRIDE COMPLETE");if(systems.filter(s=>s.world===active&&s.solved).length===2&&onDistrictRestored)onDistrictRestored();}
       else showToast("OVERRIDE "+nearest.progress+"/3 · SIGNAL "+(nearest.sequence[nearest.progress]+1));
       return true;
     }
