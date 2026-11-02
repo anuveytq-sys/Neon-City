@@ -123,7 +123,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,platfor
   function outfit(name){data.outfit=name;applyCustomization();showToast("SUIT EQUIPPED · "+name.toUpperCase());persist();}
   function setVisor(color){data.visor=color;applyCustomization();showToast("VISOR COLOR UPDATED");persist();}
   function setAccessory(name){data.accessory=name;applyCustomization();showToast("ACCESSORY · "+name.toUpperCase());persist();}
-  function mitigatedDamage(amount){return Math.max(1,amount*(1-level("shield")*.12));}
+  function mitigatedDamage(amount){return Math.max(0,amount*(1-level("shield")*.12));}
   function speedMultiplier(){return 1+level("speed")*.09;}
   function jumpMultiplier(){return 1+level("jump")*.08;}
   function energyMultiplier(){return 1+level("energy")*.2;}
