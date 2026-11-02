@@ -22,6 +22,9 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   const cyan=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:1.3});
   const gold=new T.MeshStandardMaterial({color:0xffd66b,emissive:0x8d5d08,emissiveIntensity:1.1});
   const challengeGroup=new T.Group();world.add(challengeGroup);
+  const restorationGroup=new T.Group();world.add(restorationGroup);
+  const restorationLights=[];
+  for(let i=0;i<6;i++){const g=new T.Group();g.position.set(i%2?12:-12,0,-18-i*14);restorationGroup.add(g);const stem=new T.Mesh(new T.CylinderGeometry(.08,.14,3.2,8),cyan);stem.position.y=1.6;g.add(stem);const glow=new T.Mesh(new T.SphereGeometry(.42,12,8),gold);glow.position.y=3.35;g.add(glow);const light=new T.PointLight(0x45f6ef,0,12);light.position.y=3.35;g.add(light);restorationLights.push({g,light});}
   function makeCache(x,y,z,kind){
     const g=new T.Group();g.position.set(x,y,z);challengeGroup.add(g);
     const core=new T.Mesh(new T.IcosahedronGeometry(.42,1),kind==="hidden"?accent:gold);g.add(core);
@@ -35,7 +38,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   const marker=(pos,color)=>{const g=new T.Group();g.position.copy(pos);const r=new T.Mesh(new T.TorusGeometry(1.7,.12,10,32),color);g.add(r);const beam=new T.Mesh(new T.CylinderGeometry(.08,.08,4,8),color);beam.position.y=2;g.add(beam);challengeGroup.add(g);return g;};
   const raceGate=marker(raceStart,accent),finishGate=marker(raceEnd,cyan);finishGate.visible=false;
   const bonusGate=marker(new T.Vector3(0,1.5,-108),gold);bonusGate.visible=false;
-  let raceAvailable=true, raceComplete=false, finishToast=false;
+  let raceAvailable=true, raceComplete=false, finishToast=false, bonusActive=false, bonusTime=0, bonusCount=0;\n  const bonusTokens=[];\n  for(const z of [-94,-101,-106]){const token=new T.Mesh(new T.OctahedronGeometry(.38,1),gold);token.position.set(0,1.1,z);challengeGroup.add(token);bonusTokens.push({mesh:token,taken:false});}
   function openDB(){
     return new Promise(resolve=>{
       if(!("indexedDB" in window)){resolve(null);return;}
@@ -76,7 +79,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     data.achievements.push(id);data.credits+=2;
     const a=achievements.find(x=>x[0]===id);showToast("ACHIEVEMENT UNLOCKED · "+(a?a[1]:id)+" · +2 CREDITS");renderPanel();persist();
   }
-  function collect(type){
+  function updateRestorationVisuals(){restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});}\n  function collect(type){
     if(!data.inventory.includes(type))data.inventory.push(type);
     if(data.inventory.length>=4)award("collector");
     if(type==="core")award("first_core");
@@ -90,7 +93,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     if(data.credits<cost){showToast("NEED "+cost+" UPGRADE CREDITS");return;}
     data.credits-=cost;data.levels[name]++;showToast(labels[name]+" UPGRADED · LEVEL "+data.levels[name]);persist();renderPanel();updateVitals();
   }
-  function outfit(name){data.outfit=name;player.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o!==player.userData.keepMaterial){if(name==="stealth")o.material.color.setHex(0x35415a);else if(name==="pulse")o.material.color.setHex(0x1b4560);}});showToast("SUIT EQUIPPED · "+name.toUpperCase());persist();}
+  const suitMat=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:.9,metalness:.4});\n  const visorMat=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:1.5});\n  const wearables=new T.Group();player.add(wearables);\n  const chestBadge=new T.Mesh(new T.BoxGeometry(.34,.4,.045),suitMat);chestBadge.position.set(0,1.22,-.34);wearables.add(chestBadge);\n  const visor=new T.Mesh(new T.BoxGeometry(.34,.075,.035),visorMat);visor.position.set(0,1.98,-.25);wearables.add(visor);\n  const halo=new T.Mesh(new T.TorusGeometry(.42,.055,8,28),gold);halo.position.set(0,2.34,0);halo.visible=false;wearables.add(halo);\n  const trail=new T.Mesh(new T.TorusGeometry(.55,.035,8,28),accent);trail.rotation.x=Math.PI/2;trail.position.set(0,.12,.2);trail.visible=false;wearables.add(trail);\n  function applyCustomization(){suitMat.color.setHex(data.outfit==="stealth"?0x56627c:data.outfit==="pulse"?0x1b4560:0x45f6ef);suitMat.emissive.setHex(data.outfit==="stealth"?0x1a2538:data.outfit==="pulse"?0x087d88:0x087d88);visorMat.color.set(data.visor);visorMat.emissive.set(data.visor);halo.visible=data.accessory==="halo";trail.visible=data.accessory==="trail";}\n  function outfit(name){data.outfit=name;applyCustomization();showToast("SUIT EQUIPPED · "+name.toUpperCase());persist();}
   function setVisor(color){data.visor=color;showToast("VISOR COLOR UPDATED");persist();}
   function setAccessory(name){data.accessory=name;showToast("ACCESSORY · "+name.toUpperCase());persist();}
   function mitigatedDamage(amount){return Math.max(1,amount*(1-level("shield")*.12));}
@@ -152,14 +155,14 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     }
     if(data.challenge.hiddenFound>=3&&data.challenge.environmentSolved>=2&&!data.challenge.bonusUnlocked){data.challenge.bonusUnlocked=true;bonusGate.visible=true;showToast("BONUS LEVEL UNLOCKED · NEON OVERDRIVE");persist();renderPanel();}
     if(data.challenge.bonusUnlocked&&!data.challenge.bonusComplete&&player.position.distanceTo(bonusGate.position)<3){
-      data.challenge.bonusComplete=true;data.credits+=5;data.restoration=Math.min(6,data.restoration+1);award("restorer");showToast("BONUS LEVEL CLEARED · DISTRICT RESTORED · +5 CREDITS");persist();renderPanel();
+      data.challenge.bonusComplete=true;data.credits+=5;data.restoration=Math.min(6,data.restoration+1);updateRestorationVisuals();award("restorer");showToast("BONUS LEVEL CLEARED · DISTRICT RESTORED · +5 CREDITS");persist();renderPanel();
     }
-    if(data.restoration>0){/* restoration is reflected in the city by activating more skyline lights */ }
+    if(bonusActive){bonusTime-=dt;bonusTokens.forEach(t=>{t.mesh.rotation.y+=dt*2;if(!t.taken&&player.position.distanceTo(t.mesh.position)<1.35){t.taken=true;t.mesh.visible=false;bonusCount++;showToast("BONUS DATA SHARD "+bonusCount+"/3");}});if(bonusCount>=3){bonusActive=false;data.challenge.bonusComplete=true;data.credits+=5;data.restoration=Math.min(6,data.restoration+1);award("restorer");updateRestorationVisuals();showToast("BONUS LEVEL CLEARED · DISTRICT RESTORED · +5 CREDITS");persist();renderPanel();}else if(bonusTime<=0){bonusActive=false;bonusTokens.forEach(t=>{t.taken=false;t.mesh.visible=true;});bonusCount=0;showToast("BONUS LEVEL TIME EXPIRED");}}
   }
-  buildPanel();restore();
+  buildPanel();applyCustomization();restore();
   return {update,openPanel,persist,collect,award,level,speedMultiplier,jumpMultiplier,energyMultiplier,combatBonus,hackingBonus,recoveryBonus,mitigatedDamage,
     onBossDefeated(){award("boss");data.credits+=5;data.restoration=Math.min(6,data.restoration+1);persist();renderPanel();},
-    onDistrictRestored(){data.restoration=Math.min(6,data.restoration+1);award("restorer");persist();},
+    onDistrictRestored(){data.restoration=Math.min(6,data.restoration+1);updateRestorationVisuals();award("restorer");persist();},
     get data(){return data;}
   };
 }
