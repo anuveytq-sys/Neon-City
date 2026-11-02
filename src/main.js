@@ -142,8 +142,9 @@ function createEnemy(type,x,z,hp=30){
 }
 createEnemy("ground", -5,-34,35);createEnemy("ground",5,-66,40);
 createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
+let phase5;
 const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals,damagePlayer,getHackingBonus:()=>phase5.hackingBonus(),onBossDefeated:()=>phase5.onBossDefeated(),onDistrictRestored:()=>phase5.onDistrictRestored()});
-const phase5=installPhaseFive({THREE,scene,world,player,state:playerState,cores,showToast,updateHUD,updateVitals});
+
 let phase4Entered=false;
 function fireBlaster(){
  if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
@@ -181,6 +182,8 @@ for(const [x,y,z] of [[-3,1.5,-9],[3,1.5,-17],[-4,2.2,-27],[4,1.7,-37],[-4,1.7,-
   const cellGlow=new THREE.Mesh(new THREE.BoxGeometry(.08,.52,.08),cyanMat);cellGlow.position.y=.02;g.add(cellGlow);
   const light=new THREE.PointLight(0xffc85a,8,5);addDecorativeLight(g,light);cores.push({group:g,gem,active:true});
 }
+
+phase5=installPhaseFive({THREE,scene,world,player,state:playerState,cores,showToast,updateHUD,updateVitals});
 
 // Patrol drones are hazards to dodge, not combat targets.
 const drones=[];
