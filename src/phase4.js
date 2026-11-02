@@ -72,7 +72,7 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     bosses.push({group:bossGroup,shell,eye,halo,world:i,hp:i===5?420:100,maxHp:i===5?420:100,phase:0,cooldown:2,defeated:false,attack:0});
   }
   function enter(index){
-    active=index;
+    active=index;state.district=index;
     districts.forEach((d,i)=>{d.visible=i===index;});
     const c=centers[index];
     // Spawn on the center of the active district floor, with a clean physics state.
@@ -110,5 +110,5 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
   }
   function begin(){enter(0);}
   function reset(){for(const s of systems){s.solved=false;s.progress=0;}for(const b of bosses){b.hp=b.maxHp;b.phase=0;b.defeated=false;b.group.visible=true;b.attack=0;b.cooldown=2;}finalHack=false;completed=false;enter(0);}
-  return {begin,update,interact,reset,get activeWorld(){return active;},get completed(){return completed;}};
+  return {begin,enterDistrict(index){enter(Math.max(0,Math.min(5,index|0)));},update,interact,reset,get activeWorld(){return active;},get completed(){return completed;}};
 }
