@@ -5,7 +5,7 @@ import * as THREE from "three";
  * interactable systems, hazards, enemy encounters and a multi-stage NEXUS boss.
  * Uses the existing scene/player/physics/combat systems rather than replacing them.
  */
-export function installPhaseFour({THREE: T, scene, world, player, state, platforms, shots, showToast, updateVitals}) {
+export function installPhaseFour({THREE: T, scene, world, player, state, platforms, shots, showToast, updateVitals, damagePlayer, onBossDefeated, onDistrictRestored}) {
   const mat=(c,e=0)=>new T.MeshStandardMaterial({color:c,emissive:e,emissiveIntensity:e?1.5:0,metalness:.35,roughness:.48});
   const mobile=matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;
   const palette=[
@@ -89,7 +89,7 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     for(const s of systems){if(s.world!==active||s.solved)continue;const q=s.group.getWorldPosition(new T.Vector3()),dist=p.distanceTo(q);if(dist<d){d=dist;nearest=s;}}
     if(nearest){
       nearest.progress=(nearest.progress+1)%4;
-      if(nearest.progress===nearest.sequence.length){nearest.solved=true;showToast(names[active]+" · SYSTEM OVERRIDE COMPLETE");}
+      if(nearest.progress===nearest.sequence.length){nearest.solved=true;showToast(names[active]+" · SYSTEM OVERRIDE COMPLETE");if(systems.filter(s=>s.world===active&&s.solved).length===2&&onDistrictRestored)onDistrictRestored();}
       else showToast("OVERRIDE "+nearest.progress+"/3 · SIGNAL "+(nearest.sequence[nearest.progress]+1));
       return true;
     }
@@ -99,12 +99,12 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
   function update(dt,time){
     const p=player.position;
     for(const gate of portals){if(gate.index!==active&&p.distanceTo(gate.group.getWorldPosition(new T.Vector3()))<3.2){enter(gate.index);break;}}
-    for(const h of hazards){if(h.world!==active)continue;if(h.mesh.userData.train){h.mesh.position.z=h.baseZ+Math.sin(time*1.7+h.phase)*5;if(p.distanceTo(h.mesh.getWorldPosition(new T.Vector3()))<3.3&&Math.abs(p.y)<1.2){state.health=Math.max(0,state.health-12*dt);updateVitals();}}else if(h.laser){h.mesh.visible=Math.sin(time*2+h.phase)>.05;if(h.mesh.visible&&Math.abs(p.x-(h.mesh.position.x+centers[active].x))<1&&Math.abs(p.z-(h.mesh.position.z+centers[active].z))<13&&p.y<3){state.health=Math.max(0,state.health-10*dt);updateVitals();}}}
+    for(const h of hazards){if(h.world!==active)continue;if(h.mesh.userData.train){h.mesh.position.z=h.baseZ+Math.sin(time*1.7+h.phase)*5;if(p.distanceTo(h.mesh.getWorldPosition(new T.Vector3()))<3.3&&Math.abs(p.y)<1.2){damagePlayer(12*dt);}}else if(h.laser){h.mesh.visible=Math.sin(time*2+h.phase)>.05;if(h.mesh.visible&&Math.abs(p.x-(h.mesh.position.x+centers[active].x))<1&&Math.abs(p.z-(h.mesh.position.z+centers[active].z))<13&&p.y<3){damagePlayer(10*dt);}}}
     for(const b of bosses){if(b.world!==active||b.defeated)continue;b.cooldown-=dt;b.group.rotation.y+=dt*.35;b.halo.rotation.z+=dt*(1+b.phase*.25);const dist=p.distanceTo(b.group.getWorldPosition(new T.Vector3()));
       b.attack+=dt;if(b.attack>6){b.phase=(b.phase+1)%3;b.attack=0;showToast(b.world===5?"NEXUS · "+["SHIELD","CHARGE","EXPOSED"][b.phase]:"SECURITY BOSS · "+["GUARD","CHARGE","EXPOSED"][b.phase]);}
-      if(b.cooldown<=0&&dist<24){const dir=p.clone().sub(b.group.getWorldPosition(new T.Vector3())).normalize();const orb=new T.Mesh(new T.SphereGeometry(.28,10,8),mat(0xff397d,0xff174f));orb.position.copy(b.group.position).add(new T.Vector3(centers[b.world].x,2,centers[b.world].z-1));world.add(orb);shots.push({mesh:orb,velocity:dir.multiplyScalar(9),life:3,enemy:true});b.cooldown=b.world===5?1.25:2.4;}
-      for(let i=shots.length-1;i>=0;i--){const shot=shots[i];if(shot.enemy||shot._p4Hit)continue;const target=b.group.getWorldPosition(new T.Vector3());if(shot.mesh.position.distanceTo(target)<(b.world===5?6:3)){shot._p4Hit=true;if(b.phase===2){b.hp-=b.world===5?24:25;showToast((b.world===5?"NEXUS CORE ":"BOSS CORE ")+Math.max(0,b.hp)+" HP");}else showToast("BOSS SHIELD ACTIVE · WAIT FOR EXPOSED PHASE");if(b.hp<=0){b.defeated=true;b.group.visible=false;showToast(b.world===5?"NEXUS DEFEATED · COMPLETE FINAL HACK":"DISTRICT BOSS DEFEATED");}}}
-      if(dist<3.2&&b.phase===1){state.health=Math.max(0,state.health-8*dt);updateVitals();}
+      if(b.cooldown<=0&&dist<65){const dir=p.clone().sub(b.group.getWorldPosition(new T.Vector3())).normalize();const orb=new T.Mesh(new T.SphereGeometry(.28,10,8),mat(0xff397d,0xff174f));orb.position.copy(b.group.position).add(new T.Vector3(centers[b.world].x,2,centers[b.world].z-1));world.add(orb);shots.push({mesh:orb,velocity:dir.multiplyScalar(9),life:3,enemy:true});b.cooldown=b.world===5?1.05:2.1;}
+      for(let i=shots.length-1;i>=0;i--){const shot=shots[i];if(shot.enemy||shot._p4Hit)continue;const target=b.group.getWorldPosition(new T.Vector3());if(shot.mesh.position.distanceTo(target)<(b.world===5?6:3)){shot._p4Hit=true;if(b.phase===2){b.hp-=b.world===5?24:25;showToast((b.world===5?"NEXUS CORE ":"BOSS CORE ")+Math.max(0,b.hp)+" HP");}else showToast("BOSS SHIELD ACTIVE · WAIT FOR EXPOSED PHASE");if(b.hp<=0){b.defeated=true;b.group.visible=false;if(b.world===5&&onBossDefeated)onBossDefeated();showToast(b.world===5?"NEXUS DEFEATED · COMPLETE FINAL HACK":"DISTRICT BOSS DEFEATED");}}}
+      if(dist<4.2&&b.phase===1){damagePlayer(10*dt);}
     }
     if(active===5&&bosses[5].defeated&&finalHack&&!completed){completed=true;showToast("CHRONICLE COMPLETE · NEXUS NETWORK RESTORED");}
   }
