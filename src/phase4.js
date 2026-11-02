@@ -74,9 +74,12 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
   function enter(index){
     active=index;
     districts.forEach((d,i)=>{d.visible=i===index;});
-    const c=centers[index];player.position.set(c.x,0,c.z+10);
-    state.x=player.position.x;state.y=0;state.z=player.position.z;state.vx=state.vy=state.vz=0;
-    state.checkpoint={x:state.x,y:0,z:state.z};
+    const c=centers[index];
+    // Spawn on the center of the active district floor, with a clean physics state.
+    player.position.set(c.x,0,c.z+10);
+    state.x=player.position.x;state.y=player.position.y;state.z=player.position.z;
+    state.vx=state.vy=state.vz=0;state.grounded=true;
+    state.checkpoint={x:state.x,y:state.y,z:state.z};
     showToast("ENTERING "+names[index]);
   }
   function interact(){
