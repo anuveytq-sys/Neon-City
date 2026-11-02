@@ -85,3 +85,36 @@
 @media(orientation:portrait) and (max-width:800px){
  .hud-bottom{top:62px;left:8px;width:min(188px,39vw);max-height:clamp(92px,22vh,132px);}
 }
+
+
+/* Phase 5 progression panel and non-graphic player hit feedback. */
+.progress-button{pointer-events:auto;color:#ffdc83;border-color:#ffd66b88;font-size:22px;}
+#damage-overlay{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;background:
+ radial-gradient(ellipse at 0% 0%,rgba(255,35,78,.34),transparent 30%),
+ radial-gradient(ellipse at 100% 0%,rgba(255,35,78,.32),transparent 30%),
+ radial-gradient(ellipse at 0% 100%,rgba(255,35,78,.32),transparent 30%),
+ radial-gradient(ellipse at 100% 100%,rgba(255,35,78,.34),transparent 30%);}
+#damage-overlay.hit{animation:damageVignette .42s ease-out;}
+@keyframes damageVignette{0%{opacity:1}45%{opacity:.78}100%{opacity:0}}
+#game-root.damage-shake{animation:damageShake .19s ease-out;}
+@keyframes damageShake{0%{transform:translate(0,0)}20%{transform:translate(-3px,2px)}45%{transform:translate(3px,-2px)}70%{transform:translate(-2px,-1px)}100%{transform:translate(0,0)}}
+#phase5-panel{position:absolute;z-index:15;inset:clamp(10px,3vh,28px) clamp(10px,4vw,44px);max-width:820px;margin:auto;padding:clamp(14px,3vw,28px);overflow:auto;overscroll-behavior:contain;background:rgba(4,10,25,.97);border:1px solid #5ff7ed88;box-shadow:0 0 60px #21eaff35;backdrop-filter:blur(16px);color:#edfaff;}
+#phase5-panel.hidden{display:none!important}
+.p5-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #5ff7ed44;padding-bottom:14px;margin-bottom:14px;}
+.p5-head small,.p5-content h3{font:700 9px Orbitron,sans-serif;letter-spacing:.16em;color:#5ff7ed;}
+.p5-head h2{font:800 clamp(19px,4vw,30px) Orbitron,sans-serif;margin:8px 0 0;}
+.p5-x{width:40px;height:40px;background:#14223a;border:1px solid #5ff7ed88;color:#fff;font-size:26px;}
+.p5-summary{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#12233b;padding:12px;margin-bottom:14px;}
+.p5-summary b{font:800 16px Orbitron;color:#ffd66b}.p5-summary span,.p5-inventory{font:600 10px Orbitron;color:#aebbd2;letter-spacing:.08em;line-height:1.7;}
+.p5-content h3{margin:18px 0 9px;}
+.p5-upgrades{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.p5-upgrade{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;background:#101d33;border:1px solid #42516b;}
+.p5-upgrade span{font:700 9px Orbitron;color:#e9faff}.p5-upgrade b{color:#5ff7ed;}
+.p5-upgrade button,.p5-options button,.p5-save,.p5-close{border:1px solid #5ff7ed77;background:#10283b;color:#cffffb;padding:9px;font:700 8px Orbitron;letter-spacing:.06em;touch-action:manipulation;}
+.p5-options{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
+.p5-achievements{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.p5-ach{padding:9px;background:#121a2a;border:1px solid #3b465c;display:flex;flex-direction:column;gap:4px;opacity:.58;}
+.p5-ach.earned{opacity:1;border-color:#ffd66b;background:#28243a;}
+.p5-ach b{font:700 9px Orbitron;color:#f7e7b3}.p5-ach small{font:500 12px Rajdhani;color:#b7c4d9;}
+.p5-save{margin-right:8px;background:#165b5c}.p5-close{background:#351d3a;}
+@media(max-width:650px){.p5-upgrades,.p5-achievements{grid-template-columns:1fr}.p5-upgrade{padding:8px}.p5-upgrade button{font-size:7px;padding:8px}#phase5-panel{inset:8px;padding:12px;}}
