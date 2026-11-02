@@ -77,7 +77,7 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
   const unusedRoadSquares=[[ -5,-19 ],[ 5,-28 ],[ -4,-42 ],[ 4,-60 ],[ -5,-76 ],[ 5,-94 ]];
   world.traverse(obj=>{
     if(!obj.isMesh)return;
-    for(const [x,z] of unusedRoadSquares){if(Math.abs(obj.position.x-x)<.01&&Math.abs(obj.position.z-z)<.01&&obj.geometry?.parameters?.width===3.4&&obj.geometry?.parameters?.height===.45&&obj.geometry?.parameters?.depth===3.4){obj.visible=false;obj.userData.phase6RemovedRoadSquare=true;break;}}
+    for(const [x,z] of unusedRoadSquares){if(Math.abs(obj.position.x-x)<.01&&Math.abs(obj.position.z-z)<.01&&Math.abs(obj.scale.x-3.4)<.01&&Math.abs(obj.scale.y-.45)<.01&&Math.abs(obj.scale.z-3.4)<.01){obj.visible=false;obj.userData.phase6RemovedRoadSquare=true;break;}}
   });
   function enter(index){
     active=index;state.district=index;
