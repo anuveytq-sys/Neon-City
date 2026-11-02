@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 /* Phase 5: persistent progression, customization, challenges and city restoration.
    All data is local to the player's browser; no account or paid service is required. */
-export function installPhaseFive({THREE:T,scene,world,player,state,showToast,updateHUD,updateVitals}) {
+export function installPhaseFive({THREE:T,scene,world,player,state,cores,showToast,updateHUD,updateVitals}) {
   const STORE="neon-velocity-phase5-v1";
   const defaults={levels:{speed:0,jump:0,energy:0,shield:0,hacking:0,combat:0,recovery:0},credits:0,inventory:[],achievements:[],outfit:"runner",visor:"#45f6ef",accessory:"none",district:0,checkpoint:null,challenge:{raceBest:null,timeTrialBest:null,hiddenFound:0,environmentSolved:0,bonusUnlocked:false,bonusComplete:false},restoration:0};
   let data=structuredClone(defaults), panel=null, challengeActive=null, challengeTime=0, autoSaveTimer=0, lastCheckpoint="";
@@ -56,7 +56,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     });
   }
   async function persist(){
-    const snapshot={...data,checkpoint:{x:state.checkpoint.x,y:state.checkpoint.y,z:state.checkpoint.z},district:state.district||0,health:state.health,energy:state.energy,cores:state.cores,inventoryState:state.inventory};
+    const snapshot={...data,checkpoint:{x:state.checkpoint.x,y:state.checkpoint.y,z:state.checkpoint.z},district:state.district||0,health:state.health,energy:state.energy,cores:state.cores,collectedCores:cores.map((c,i)=>c.active?null:i).filter(i=>i!==null),inventoryState:state.inventory};
     try{
       const db=await openDB();
       if(db){await new Promise(resolve=>{const tx=db.transaction("saves","readwrite");tx.objectStore("saves").put(snapshot,STORE);tx.oncomplete=resolve;tx.onerror=resolve;});db.close();}
@@ -74,6 +74,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     data={...defaults,...saved,levels:{...defaults.levels,...saved.levels},challenge:{...defaults.challenge,...saved.challenge}};
     if(saved.inventoryState)state.inventory={...state.inventory,...saved.inventoryState};
     if(Number.isFinite(saved.cores))state.cores=saved.cores;
+    if(Array.isArray(saved.collectedCores))cores.forEach((c,i)=>{c.active=!saved.collectedCores.includes(i);c.group.visible=c.active;});
     if(Number.isFinite(saved.health))state.health=saved.health;
     if(Number.isFinite(saved.energy))state.energy=saved.energy;
     if(saved.checkpoint&&Number.isFinite(saved.checkpoint.x))state.checkpoint={...saved.checkpoint};
@@ -122,7 +123,8 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   function combatBonus(){return level("combat")*8;}
   function hackingBonus(){return level("hacking");}
   function recoveryBonus(){return level("recovery");}
-  function openPanel(){if(!panel)return;panel.classList.toggle("hidden");renderPanel();}
+  function closePanel(){if(!panel)return;panel.classList.add("hidden");state.paused=false;}
+  function openPanel(){if(!panel)return;const opening=panel.classList.contains("hidden");panel.classList.toggle("hidden");state.paused=opening;renderPanel();}
   function renderPanel(){
     if(!panel)return;
     const upgrades=Object.keys(labels).map(k=>'<div class="p5-upgrade"><span>'+labels[k]+' <b>LV '+level(k)+'/5</b></span><button data-upgrade="'+k+'">UPGRADE · '+(costs[k]+level(k))+' CR</button></div>').join("");
@@ -142,13 +144,13 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     panel.querySelectorAll("[data-visor]").forEach(b=>b.addEventListener("click",()=>setVisor(b.dataset.visor)));
     panel.querySelectorAll("[data-accessory]").forEach(b=>b.addEventListener("click",()=>setAccessory(b.dataset.accessory)));
     panel.querySelector(".p5-save").addEventListener("click",()=>{persist();showToast("PROGRESS SAVED");});
-    panel.querySelector(".p5-close").addEventListener("click",()=>panel.classList.add("hidden"));
+    panel.querySelector(".p5-close").addEventListener("click",closePanel);
   }
   function buildPanel(){
     panel=document.createElement("section");panel.id="phase5-panel";panel.className="hidden";
     panel.innerHTML='<div class="p5-head"><div><small>NEON VELOCITY // PHASE 05</small><h2>PLAYER PROGRESSION</h2></div><button class="p5-x" aria-label="Close progression">×</button></div><div class="p5-content"></div>';
     document.querySelector("#app").appendChild(panel);
-    panel.querySelector(".p5-x").addEventListener("click",()=>panel.classList.add("hidden"));
+    panel.querySelector(".p5-x").addEventListener("click",closePanel);
   }
   function update(dt,time){
     autoSaveTimer+=dt;if(autoSaveTimer>12){autoSaveTimer=0;persist();}
@@ -179,7 +181,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     if(bonusActive){bonusTime-=dt;bonusTokens.forEach(t=>{t.mesh.rotation.y+=dt*2;if(!t.taken&&player.position.distanceTo(t.mesh.position)<1.35){t.taken=true;t.mesh.visible=false;bonusCount++;showToast("BONUS DATA SHARD "+bonusCount+"/3");}});if(bonusCount>=3){bonusActive=false;data.challenge.bonusComplete=true;data.credits+=5;data.restoration=Math.min(6,data.restoration+1);award("restorer");updateRestorationVisuals();showToast("BONUS LEVEL CLEARED · DISTRICT RESTORED · +5 CREDITS");persist();renderPanel();}else if(bonusTime<=0){bonusActive=false;bonusTokens.forEach(t=>{t.taken=false;t.mesh.visible=false;});bonusCount=0;showToast("BONUS LEVEL TIME EXPIRED");}}
   }
   buildPanel();applyCustomization();restore();
-  return {update,openPanel,persist,collect,award,interact,level,speedMultiplier,jumpMultiplier,energyMultiplier,combatBonus,hackingBonus,recoveryBonus,mitigatedDamage,
+  return {update,openPanel,closePanel,persist,collect,award,interact,level,speedMultiplier,jumpMultiplier,energyMultiplier,combatBonus,hackingBonus,recoveryBonus,mitigatedDamage,
     onBossDefeated(){award("boss");data.credits+=5;data.restoration=Math.min(6,data.restoration+1);updateRestorationVisuals();persist();renderPanel();},
     onDistrictRestored(){data.restoration=Math.min(6,data.restoration+1);updateRestorationVisuals();award("restorer");persist();},
     get data(){return data;}
