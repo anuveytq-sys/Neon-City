@@ -121,6 +121,7 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
       }
       for(let i=shots.length-1;i>=0;i--){const shot=shots[i];if(shot.enemy||shot._p4Hit)continue;const target=b.group.getWorldPosition(new T.Vector3());if(shot.mesh.position.distanceTo(target)<(b.world===5?6:3)){shot._p4Hit=true;if(b.phase===2){b.hp-=b.world===5?24:25;showToast((b.world===5?"NEXUS CORE ":"BOSS CORE ")+Math.max(0,b.hp)+" HP");}else showToast("BOSS SHIELD ACTIVE · WAIT FOR EXPOSED PHASE");if(b.hp<=0){b.defeated=true;b.group.visible=false;if(b.world===5&&onBossDefeated)onBossDefeated();showToast(b.world===5?"NEXUS DEFEATED · COMPLETE FINAL HACK":"DISTRICT BOSS DEFEATED");}}
     }
+    }
     for(const shot of shots){
       if(!shot.enemy||!shot.boss)continue;
       const target=p.clone().add(new T.Vector3(0,1,0));
