@@ -22,7 +22,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   const cyan=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:1.3});
   const gold=new T.MeshStandardMaterial({color:0xffd66b,emissive:0x8d5d08,emissiveIntensity:1.1});
   const challengeGroup=new T.Group();world.add(challengeGroup);
-  const restorationGroup=new T.Group();world.add(restorationGroup);
+  const restorationGroup=new T.Group();restorationGroup.visible=false;world.add(restorationGroup);
   const restorationLights=[];
   for(let i=0;i<6;i++){const g=new T.Group();g.position.set(i%2?12:-12,0,-18-i*14);restorationGroup.add(g);const stem=new T.Mesh(new T.CylinderGeometry(.08,.14,3.2,8),cyan);stem.position.y=1.6;g.add(stem);const glow=new T.Mesh(new T.SphereGeometry(.42,12,8),gold);glow.position.y=3.35;g.add(glow);const light=new T.PointLight(0x45f6ef,0,12);light.position.y=3.35;g.add(light);restorationLights.push({g,light});}
   function makeCache(x,y,z,kind){
@@ -39,12 +39,12 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   const raceGate=marker(raceStart,accent),finishGate=marker(raceEnd,cyan);finishGate.visible=false;
   const bonusGate=marker(new T.Vector3(0,1.5,-108),gold);bonusGate.visible=false;
   const newAreaGate=marker(new T.Vector3(8,1.5,-88),cyan);newAreaGate.visible=false;
-  const transitGroup=new T.Group();world.add(transitGroup);const transitPods=[];
+  const transitGroup=new T.Group();transitGroup.visible=false;world.add(transitGroup);const transitPods=[];
   for(let i=0;i<2;i++){const pod=new T.Group();const shell=new T.Mesh(new T.BoxGeometry(2.2,.65,3.8),new T.MeshStandardMaterial({color:0x1c3850,emissive:0x0b5260}));pod.add(shell);const windowMesh=new T.Mesh(new T.BoxGeometry(1.7,.28,.08),cyan);windowMesh.position.set(0,.12,-1.94);pod.add(windowMesh);transitGroup.add(pod);transitPods.push(pod);}
-  const citizenGroup=new T.Group();world.add(citizenGroup);
+  const citizenGroup=new T.Group();citizenGroup.visible=false;world.add(citizenGroup);
   for(let i=0;i<4;i++){const person=new T.Group();const torso=new T.Mesh(new T.CapsuleGeometry(.18,.52,4,8),new T.MeshStandardMaterial({color:i%2?0x344b68:0x5a315d,emissive:i%2?0x082b40:0x32102b}));torso.position.y=.55;person.add(torso);const head=new T.Mesh(new T.SphereGeometry(.17,10,8),gold);head.position.y=1.05;person.add(head);person.position.set(i%2?10:-10,0,-25-i*17);citizenGroup.add(person);}
   const newAreaGlow=new T.PointLight(0x45f6ef,0,18);newAreaGlow.position.set(8,3,-88);world.add(newAreaGlow);
-  let raceAvailable=true, raceComplete=false, finishToast=false, bonusActive=false, bonusTime=0, bonusCount=0;
+  let raceAvailable=true, raceComplete=false, finishToast=false, bonusActive=false, bonusTime=0, bonusCount=0, newAreaToast=false;
   const bonusTokens=[];
   for(const z of [-94,-101,-106]){const token=new T.Mesh(new T.OctahedronGeometry(.38,1),gold);token.position.set(0,1.1,z);token.visible=false;challengeGroup.add(token);bonusTokens.push({mesh:token,taken:false});}
   function openDB(){
@@ -76,17 +76,19 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     if(Number.isFinite(saved.cores))state.cores=saved.cores;
     if(Number.isFinite(saved.health))state.health=saved.health;
     if(Number.isFinite(saved.energy))state.energy=saved.energy;
-    if(saved.checkpoint&&Number.isFinite(saved.checkpoint.x)){
-      state.checkpoint={...saved.checkpoint};
-    }
-    updateHUD();updateVitals();renderPanel();
+    if(saved.checkpoint&&Number.isFinite(saved.checkpoint.x))state.checkpoint={...saved.checkpoint};
+    cacheObjects.forEach(c=>{const group=cacheObjects.filter(x=>x.kind===c.kind);const index=group.indexOf(c);const foundCount=c.kind==="hidden"?data.challenge.hiddenFound:data.challenge.environmentSolved;if(index<foundCount){c.found=true;c.group.visible=false;}});
+    raceComplete=data.challenge.raceBest!==null;
+    bonusGate.visible=data.challenge.bonusUnlocked&&!data.challenge.bonusComplete;
+    bonusTokens.forEach(t=>{t.taken=data.challenge.bonusComplete;t.mesh.visible=false;});
+    applyCustomization();updateRestorationVisuals();updateHUD();updateVitals();renderPanel();
   }
   function award(id){
     if(data.achievements.includes(id))return;
     data.achievements.push(id);data.credits+=2;
     const a=achievements.find(x=>x[0]===id);showToast("ACHIEVEMENT UNLOCKED · "+(a?a[1]:id)+" · +2 CREDITS");renderPanel();persist();
   }
-  function updateRestorationVisuals(){restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});transitGroup.visible=data.restoration>=2;citizenGroup.visible=data.restoration>=3;newAreaGate.visible=data.restoration>=4;newAreaGlow.intensity=data.restoration>=4?8:0;}
+  function updateRestorationVisuals(){restorationGroup.visible=data.restoration>0;restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});transitGroup.visible=data.restoration>=2;citizenGroup.visible=data.restoration>=3;newAreaGate.visible=data.restoration>=4;newAreaGlow.intensity=data.restoration>=4?8:0;}
   function collect(type){
     if(!data.inventory.includes(type))data.inventory.push(type);
     if(data.inventory.length>=4)award("collector");
@@ -151,6 +153,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   function update(dt,time){
     autoSaveTimer+=dt;if(autoSaveTimer>12){autoSaveTimer=0;persist();}
     updateRestorationVisuals();
+    if(data.restoration>=4&&!newAreaToast&&player.position.distanceTo(newAreaGate.position)<4){newAreaToast=true;showToast("RESTORED TRANSIT ACCESS OPEN · NEW CITY ROUTE AVAILABLE");}
     transitPods.forEach((p,i)=>{p.position.set(Math.sin(time*.35+i*Math.PI)*2.5,.9,-12-((time*3+i*45)%92));p.rotation.y=Math.PI;});
     for(const c of cacheObjects){
       c.group.rotation.y+=dt*.8;c.group.position.y=c.baseY+Math.sin(time*2+c.baseY)*.12;
