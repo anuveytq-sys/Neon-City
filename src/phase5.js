@@ -5,7 +5,7 @@ import * as THREE from "three";
 export function installPhaseFive({THREE:T,scene,world,player,state,cores,platforms,showToast,updateHUD,updateVitals}) {
   const STORE="neon-velocity-phase5-v1";
   const defaults={levels:{speed:0,jump:0,energy:0,shield:0,hacking:0,combat:0,recovery:0},credits:0,inventory:[],achievements:[],outfit:"runner",visor:"#45f6ef",accessory:"none",district:0,checkpoint:null,challenge:{raceBest:null,timeTrialBest:null,hiddenFound:0,environmentSolved:0,bonusUnlocked:false,bonusComplete:false,relicCollected:false},restoration:0};
-  let data=structuredClone(defaults), panel=null, challengeActive=null, challengeTime=0, autoSaveTimer=0, lastCheckpoint="";
+  let data=structuredClone(defaults), panel=null, challengeActive=null, challengeTime=0, autoSaveTimer=0, lastCheckpoint="", savedCheckpoint=null, savedDistrict=-1, hasSave=false;
   const costs={speed:2,jump:2,energy:2,shield:3,hacking:2,combat:3,recovery:2};
   const labels={speed:"SPEED",jump:"JUMP",energy:"ENERGY",shield:"SHIELD",hacking:"HACKING",combat:"COMBAT",recovery:"RECOVERY CORES"};
   const achievements=[
@@ -62,7 +62,8 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,platfor
     });
   }
   async function persist(){
-    const snapshot={...data,checkpoint:{x:state.checkpoint.x,y:state.checkpoint.y,z:state.checkpoint.z},district:state.district||0,health:state.health,energy:state.energy,cores:state.cores,collectedCores:cores.map((c,i)=>c.active?null:i).filter(i=>i!==null),inventoryState:state.inventory};
+    const snapshot={...data,checkpoint:{x:state.checkpoint.x,y:state.checkpoint.y,z:state.checkpoint.z},district:Number.isInteger(state.district)?state.district:-1,health:state.health,energy:state.energy,cores:state.cores,collectedCores:cores.map((c,i)=>c.active?null:i).filter(i=>i!==null),inventoryState:state.inventory};
+    savedCheckpoint={...snapshot.checkpoint};savedDistrict=snapshot.district;hasSave=true;
     try{
       const db=await openDB();
       if(db){await new Promise(resolve=>{const tx=db.transaction("saves","readwrite");tx.objectStore("saves").put(snapshot,STORE);tx.oncomplete=resolve;tx.onerror=resolve;});db.close();}
@@ -77,6 +78,8 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,platfor
       if(!saved){const raw=localStorage.getItem(STORE);if(raw)saved=JSON.parse(raw);}
     }catch(_){}
     if(!saved)return;
+    hasSave=true;savedCheckpoint=saved.checkpoint?{...saved.checkpoint}:null;savedDistrict=Number.isInteger(saved.district)?saved.district:-1;
+    const continueButton=document.querySelector("#continue-button");if(continueButton)continueButton.classList.remove("hidden");
     data={...defaults,...saved,levels:{...defaults.levels,...saved.levels},challenge:{...defaults.challenge,...saved.challenge}};
     if(saved.inventoryState)state.inventory={...state.inventory,...saved.inventoryState};
     if(Number.isFinite(saved.cores))state.cores=saved.cores;
@@ -189,7 +192,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,platfor
     if(bonusActive){bonusTime-=dt;bonusTokens.forEach(t=>{t.mesh.rotation.y+=dt*2;if(!t.taken&&player.position.distanceTo(t.mesh.position)<1.35){t.taken=true;t.mesh.visible=false;bonusCount++;showToast("BONUS DATA SHARD "+bonusCount+"/3");}});if(bonusCount>=3){bonusActive=false;data.challenge.bonusComplete=true;data.credits+=5;data.restoration=Math.min(6,data.restoration+1);award("restorer");updateRestorationVisuals();showToast("BONUS LEVEL CLEARED · DISTRICT RESTORED · +5 CREDITS");persist();renderPanel();}else if(bonusTime<=0){bonusActive=false;bonusTokens.forEach(t=>{t.taken=false;t.mesh.visible=false;});bonusCount=0;showToast("BONUS LEVEL TIME EXPIRED");}}
   }
   buildPanel();applyCustomization();restore();
-  return {update,openPanel,closePanel,persist,collect,award,interact,level,speedMultiplier,jumpMultiplier,energyMultiplier,combatBonus,hackingBonus,recoveryBonus,mitigatedDamage,
+  return {update,openPanel,closePanel,persist,collect,award,interact,level,getSavedState(){return {checkpoint:savedCheckpoint?{...savedCheckpoint}:null,district:savedDistrict,hasSave};},speedMultiplier,jumpMultiplier,energyMultiplier,combatBonus,hackingBonus,recoveryBonus,mitigatedDamage,
     onBossDefeated(){award("boss");data.credits+=5;data.restoration=Math.min(6,data.restoration+1);updateRestorationVisuals();persist();renderPanel();},
     onDistrictRestored(){data.restoration=Math.min(6,data.restoration+1);updateRestorationVisuals();award("restorer");persist();},
     get data(){return data;}
