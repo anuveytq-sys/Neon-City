@@ -37,7 +37,6 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     const c=centers[i],g=new T.Group();g.position.copy(c);g.visible=i===0;world.add(g);districts.push(g);
     const [base,glow,accent]=palette[i],bm=mat(base),gm=mat(glow,glow),am=mat(accent,accent);
     makeBox(g,0,-.62,0,50,1.2,54,bm);
-    // Distinct architectural silhouettes and traversable rooftops.
     for(let n=0;n<9;n++){
       const x=((n%3)-1)*15, z=Math.floor(n/3)*-15+9, h=5+(n*7+i*3)%17;
       makeBox(g,x,h/2-.2,z,5+(n%2)*2,h,6,bm);
@@ -69,13 +68,12 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     const shell=new T.Mesh(new T.IcosahedronGeometry(size,1),am);shell.position.y=size;bossGroup.add(shell);
     const eye=new T.Mesh(new T.SphereGeometry(size*.25,16,12),gm);eye.position.set(0,size,-size*.86);bossGroup.add(eye);
     const halo=new T.Mesh(new T.TorusGeometry(size*1.25,.13,8,32),gm);halo.position.y=size;halo.rotation.x=Math.PI/2;bossGroup.add(halo);
-    bosses.push({group:bossGroup,shell,eye,halo,world:i,hp:i===5?420:100,maxHp:i===5?420:100,phase:0,cooldown:2,defeated:false,attack:0});
+    bosses.push({group:bossGroup,shell,eye,halo,world:i,hp:i===5?420:100,maxHp:i===5?420:100,phase:0,cooldown:2,defeated:false,attack:0,closeAttack:0});
   }
   function enter(index){
     active=index;state.district=index;
     districts.forEach((d,i)=>{d.visible=i===index;});
     const c=centers[index];
-    // Spawn on the center of the active district floor, with a clean physics state.
     player.position.set(c.x,0,c.z+10);
     state.x=player.position.x;state.y=player.position.y;state.z=player.position.z;
     state.vx=state.vy=state.vz=0;state.grounded=true;
@@ -100,15 +98,38 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     const p=player.position;
     for(const gate of portals){if(gate.index!==active&&p.distanceTo(gate.group.getWorldPosition(new T.Vector3()))<3.2){enter(gate.index);break;}}
     for(const h of hazards){if(h.world!==active)continue;if(h.mesh.userData.train){h.mesh.position.z=h.baseZ+Math.sin(time*1.7+h.phase)*5;if(p.distanceTo(h.mesh.getWorldPosition(new T.Vector3()))<3.3&&Math.abs(p.y)<1.2){damagePlayer(12*dt);}}else if(h.laser){h.mesh.visible=Math.sin(time*2+h.phase)>.05;if(h.mesh.visible&&Math.abs(p.x-(h.mesh.position.x+centers[active].x))<1&&Math.abs(p.z-(h.mesh.position.z+centers[active].z))<13&&p.y<3){damagePlayer(10*dt);}}}
-    for(const b of bosses){if(b.world!==active||b.defeated)continue;b.cooldown-=dt;b.group.rotation.y+=dt*.35;b.halo.rotation.z+=dt*(1+b.phase*.25);const dist=p.distanceTo(b.group.getWorldPosition(new T.Vector3()));
-      b.attack+=dt;if(b.attack>6){b.phase=(b.phase+1)%3;b.attack=0;showToast(b.world===5?"NEXUS · "+["SHIELD","CHARGE","EXPOSED"][b.phase]:"SECURITY BOSS · "+["GUARD","CHARGE","EXPOSED"][b.phase]);}
-      if(b.cooldown<=0&&dist<65){const dir=p.clone().sub(b.group.getWorldPosition(new T.Vector3())).normalize();const orb=new T.Mesh(new T.SphereGeometry(.28,10,8),mat(0xff397d,0xff174f));orb.position.copy(b.group.position).add(new T.Vector3(centers[b.world].x,1.2,centers[b.world].z-1));world.add(orb);shots.push({mesh:orb,velocity:dir.multiplyScalar(15),life:4,enemy:true});b.cooldown=b.world===5?1.05:2.1;}
-      for(let i=shots.length-1;i>=0;i--){const shot=shots[i];if(shot.enemy||shot._p4Hit)continue;const target=b.group.getWorldPosition(new T.Vector3());if(shot.mesh.position.distanceTo(target)<(b.world===5?6:3)){shot._p4Hit=true;if(b.phase===2){b.hp-=b.world===5?24:25;showToast((b.world===5?"NEXUS CORE ":"BOSS CORE ")+Math.max(0,b.hp)+" HP");}else showToast("BOSS SHIELD ACTIVE · WAIT FOR EXPOSED PHASE");if(b.hp<=0){b.defeated=true;b.group.visible=false;if(b.world===5&&onBossDefeated)onBossDefeated();showToast(b.world===5?"NEXUS DEFEATED · COMPLETE FINAL HACK":"DISTRICT BOSS DEFEATED");}}}
-      if(dist<4.2&&b.phase===1){damagePlayer(10*dt);}
+    for(const b of bosses){
+      if(b.world!==active||b.defeated)continue;
+      b.cooldown-=dt;b.closeAttack-=dt;b.group.rotation.y+=dt*.35;b.halo.rotation.z+=dt*(1+b.phase*.25);
+      const bossWorld=b.group.getWorldPosition(new T.Vector3());
+      const dist=p.distanceTo(bossWorld);
+      b.attack+=dt;
+      if(b.attack>6){b.phase=(b.phase+1)%3;b.attack=0;showToast(b.world===5?"NEXUS · "+["SHIELD","CHARGE","EXPOSED"][b.phase]:"SECURITY BOSS · "+["GUARD","CHARGE","EXPOSED"][b.phase]);}
+      if(b.cooldown<=0&&dist<80){
+        const origin=bossWorld.clone().add(new T.Vector3(0,b.world===5?4.5:2.1,0));
+        const target=p.clone().add(new T.Vector3(0,1,0));
+        const dir=target.sub(origin).normalize();
+        const orb=new T.Mesh(new T.SphereGeometry(b.world===5?.42:.32,12,10),mat(0xff397d,0xff174f));
+        orb.position.copy(origin).addScaledVector(dir,1.1);world.add(orb);
+        shots.push({mesh:orb,velocity:dir.multiplyScalar(b.world===5?18:15),life:b.world===5?5:4,enemy:true,boss:true,speed:b.world===5?18:15});
+        b.cooldown=b.world===5?0.9:2.1;
+        if(b.world===5)showToast("NEXUS FIRES · INCOMING");
+      }
+      if(dist<8.5&&b.closeAttack<=0){
+        damagePlayer(b.world===5?16:10);
+        b.closeAttack=b.world===5?1.4:1.8;
+      }
+      for(let i=shots.length-1;i>=0;i--){const shot=shots[i];if(shot.enemy||shot._p4Hit)continue;const target=b.group.getWorldPosition(new T.Vector3());if(shot.mesh.position.distanceTo(target)<(b.world===5?6:3)){shot._p4Hit=true;if(b.phase===2){b.hp-=b.world===5?24:25;showToast((b.world===5?"NEXUS CORE ":"BOSS CORE ")+Math.max(0,b.hp)+" HP");}else showToast("BOSS SHIELD ACTIVE · WAIT FOR EXPOSED PHASE");if(b.hp<=0){b.defeated=true;b.group.visible=false;if(b.world===5&&onBossDefeated)onBossDefeated();showToast(b.world===5?"NEXUS DEFEATED · COMPLETE FINAL HACK":"DISTRICT BOSS DEFEATED");}}
+    }
+    for(const shot of shots){
+      if(!shot.enemy||!shot.boss)continue;
+      const target=p.clone().add(new T.Vector3(0,1,0));
+      const toTarget=target.sub(shot.mesh.position);
+      if(toTarget.lengthSq()>0.0001){const desired=toTarget.normalize().multiplyScalar(shot.speed||15);shot.velocity.lerp(desired,Math.min(1,dt*4.5));}
     }
     if(active===5&&bosses[5].defeated&&finalHack&&!completed){completed=true;showToast("CHRONICLE COMPLETE · NEXUS NETWORK RESTORED");}
   }
   function begin(){enter(0);}
-  function reset(){for(const s of systems){s.solved=false;s.progress=0;}for(const b of bosses){b.hp=b.maxHp;b.phase=0;b.defeated=false;b.group.visible=true;b.attack=0;b.cooldown=2;}finalHack=false;completed=false;enter(0);}
+  function reset(){for(const s of systems){s.solved=false;s.progress=0;}for(const b of bosses){b.hp=b.maxHp;b.phase=0;b.defeated=false;b.group.visible=true;b.attack=0;b.cooldown=2;b.closeAttack=0;}finalHack=false;completed=false;enter(0);}
   return {begin,enterDistrict(index){enter(Math.max(0,Math.min(5,index|0)));},update,interact,reset,get activeWorld(){return active;},get completed(){return completed;}};
 }
