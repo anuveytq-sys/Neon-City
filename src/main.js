@@ -64,7 +64,7 @@ box(-4,-.65,-52,10,1.2,17,floorMat);
 box(3,-.65,-70,13,1.2,18,floorMat);
 box(0,-.65,-88,18,1.2,18,floorMat);
 box(0,-.65,-106,22,1.2,18,floorMat);
-box(0,-1.35,-58,160,1,160,darkMat,false);
+// Removed the oversized decorative slab: it obscured the extraction portal and skyline.
 for(let z=-5;z>-112;z-=8){neonLine(0,-.02,z,17,.12,cyanMat);}
 for(let i=0;i<16;i++){
   const z=-i*7-7, h=5+(i*7%13), x=(i%2?1:-1)*(13+(i%3)*4);
@@ -74,7 +74,8 @@ for(let i=0;i<16;i++){
   b.material=wallMat;
 }
 for(let z=-12;z>-112;z-=16){for(let side of [-1,1]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.07,.11,5,8),darkMat);pole.position.set(side*8,2,z);world.add(pole);const lamp=new THREE.PointLight(side>0?0xff4fd8:0x32f5ff,16,13);lamp.position.set(side*8,4.5,z);addDecorativeLight(world,lamp);}}
-for(const [x,z] of [[-5,-19],[5,-28],[-4,-42],[4,-60],[-5,-76],[5,-94]]) box(x,1.1,z,3.4,.45,3.4,wallMat);
+// Decorative road blocks are non-solid; they must never trap the runner or block nearby power cells.
+for(const [x,z] of [[-5,-19],[5,-28],[-4,-42],[4,-60],[-5,-76],[5,-94]]) box(x,1.1,z,3.4,.45,3.4,wallMat,false);
 box(0,.3,-113,8,1.2,8,wallMat);
 const portal = new THREE.Group();portal.position.set(0,1.5,-112);world.add(portal);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(2.1,.16,12,48),cyanMat);portal.add(ring);
@@ -351,7 +352,7 @@ let cameraYaw=0, cameraPitch=.16, dragging=false,lastPointer=null;
 addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();if(e.key.toLowerCase()==="e")tryInteract();if(e.key.toLowerCase()==="i")phase5.openPanel();});
 addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
 let touchMovePointer=null,touchMoveOrigin=null;
-function pointerGamePoint(e){const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;return rotated?{x:e.clientY,y:-e.clientX}:{x:e.clientX,y:e.clientY};}
+function pointerGamePoint(e){const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;if(!rotated)return{x:e.clientX,y:e.clientY};const left=(innerWidth-innerHeight)/2,top=(innerHeight-innerWidth)/2;return{x:e.clientY-top,y:innerWidth-(e.clientX-left)};}
 function clearPointerControl(){dragging=false;lastPointer=null;touchMovePointer=null;touchMoveOrigin=null;stickVector={x:0,y:0};}
 renderer.domElement.addEventListener("pointerdown",e=>{if(!playerState.active||playerState.paused)return;const point=pointerGamePoint(e),split=(isTouch&&innerHeight>innerWidth&&innerWidth<=800?innerHeight:innerWidth)*.52;if(e.pointerType==="touch"||e.pointerType==="pen"){renderer.domElement.setPointerCapture?.(e.pointerId);if(point.x<split){touchMovePointer=e.pointerId;touchMoveOrigin=point;stickVector={x:0,y:0};}else{dragging=true;lastPointer=point;}}else if(e.pointerType==="mouse"&&point.x>split){dragging=true;lastPointer=point;}});
 renderer.domElement.addEventListener("pointermove",e=>{const point=pointerGamePoint(e);if(touchMovePointer===e.pointerId&&touchMoveOrigin){const dx=point.x-touchMoveOrigin.x,dy=point.y-touchMoveOrigin.y,max=72,len=Math.hypot(dx,dy),scale=len>max?max/len:1;stickVector={x:dx*scale/max,y:dy*scale/max};}else if(dragging&&lastPointer&&playerState.active&&!playerState.paused){cameraYaw-=(point.x-lastPointer.x)*.005;cameraPitch=THREE.MathUtils.clamp(cameraPitch+(point.y-lastPointer.y)*.0025,-.12,.68);lastPointer=point;}});
@@ -426,7 +427,9 @@ function resizeGame(){
   },80);
 }
 addEventListener("resize",resizeGame,{passive:true});
-addEventListener("orientationchange",resizeGame,{passive:true});
+addEventListener("orientationchange",()=>{clearPointerControl();resizeGame();},{passive:true});
+addEventListener("blur",clearPointerControl,{passive:true});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)clearPointerControl();},{passive:true});
 screen.orientation?.addEventListener?.("change",resizeGame);
 visualViewport?.addEventListener?.("resize",resizeGame,{passive:true});
 function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||keys.has("arrowup")||touch.has("forward")?1:0)-(keys.has("s")||keys.has("arrowdown")||touch.has("back")?1:0);const r=stickVector.x!==0?stickVector.x:(keys.has("d")||keys.has("arrowright")||touch.has("right")?1:0)-(keys.has("a")||keys.has("arrowleft")||touch.has("left")?1:0);return {f,r};}
@@ -496,7 +499,7 @@ function update(dt,time){
   arms.forEach((limb,i)=>limb.rotation.x=i===0?-swing*.8:swing*.8);
   feet[0].rotation.x=swing*.7;feet[1].rotation.x=-swing*.7;
   if(!playerState.grounded){legs.forEach((limb,i)=>limb.rotation.x=i===0?-.35:.35);arms.forEach(limb=>limb.rotation.x=-.45);}
-  cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;phase5.collect("core");playerState.health=Math.min(100,playerState.health+phase5.recoveryBonus()*3);playerState.energy=Math.min(100,playerState.energy+10+phase5.recoveryBonus()*2);updateVitals();if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
+  cores.forEach(c=>{const dx=player.position.x-c.group.position.x,dz=player.position.z-c.group.position.z,dy=Math.abs(player.position.y-c.group.position.y);if(c.active&&Math.hypot(dx,dz)<1.9&&dy<2.9){c.active=false;c.group.visible=false;playerState.cores++;phase5.collect("core");playerState.health=Math.min(100,playerState.health+phase5.recoveryBonus()*3);playerState.energy=Math.min(100,playerState.energy+10+phase5.recoveryBonus()*2);updateVitals();if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
   drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){damagePlayer(10);d.group.position.set(d.baseX,1.4,d.baseZ);}});
   if(sideMissionState==="available"&&player.position.distanceTo(sideBeacon.position)<2.5){sideMissionState="active";sideMissionTime=25;showToast("OPTIONAL MISSION: DATA RECOVERY · 25 SEC");}
   if(sideMissionState==="active"){sideMissionTime=Math.max(0,sideMissionTime-dt);const timer=document.querySelector("#side-mission");if(timer)timer.textContent="OPTIONAL DATA RECOVERY · "+Math.ceil(sideMissionTime)+"s · "+sideMissionCount+"/2";if(sideMissionTime<=0){sideMissionState="failed";showToast("OPTIONAL MISSION FAILED");}}
