@@ -183,7 +183,7 @@ for(const [x,y,z] of [[-3,1.5,-9],[3,1.5,-17],[-4,2.2,-27],[4,1.7,-37],[-4,1.7,-
   const light=new THREE.PointLight(0xffc85a,8,5);addDecorativeLight(g,light);cores.push({group:g,gem,active:true});
 }
 
-phase5=installPhaseFive({THREE,scene,world,player,state:playerState,cores,showToast,updateHUD,updateVitals});
+phase5=installPhaseFive({THREE,scene,world,player,state:playerState,cores,platforms,showToast,updateHUD,updateVitals});
 
 // Patrol drones are hazards to dodge, not combat targets.
 const drones=[];
