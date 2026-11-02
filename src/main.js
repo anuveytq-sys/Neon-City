@@ -4,6 +4,7 @@ import "./style.css";
 import "./mobile-orientation.css";
 import * as THREE from "three";
 import { installPhaseFour } from "./phase4.js";
+import { installPhaseFive } from "./phase5.js";
 
 const root = document.querySelector("#game-root");
 const loading = document.querySelector("#loading-screen");
@@ -141,7 +142,8 @@ function createEnemy(type,x,z,hp=30){
 }
 createEnemy("ground", -5,-34,35);createEnemy("ground",5,-66,40);
 createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
-const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals});
+const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals,damagePlayer});
+const phase5=installPhaseFive({THREE,scene,world,player,state:playerState,showToast,updateHUD,updateVitals});
 function fireBlaster(){
  if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
  playerState.energy-=12;fireCooldown=.24;
@@ -164,7 +166,7 @@ function updateVitals(){
  if(healthValue)healthValue.textContent=Math.ceil(playerState.health);
  if(energyValue)energyValue.textContent=Math.ceil(playerState.energy);
 }
-function damagePlayer(amount){if(!playerState.active||playerState.paused)return;playerState.health=Math.max(0,playerState.health-amount);updateVitals();showToast("SYSTEM INTEGRITY "+Math.ceil(playerState.health)+"%");if(playerState.health<=0){playerState.health=100;respawn();updateVitals();}}
+function damagePlayer(amount){if(!playerState.active||playerState.paused)return;const hit=phase5?phase5.mitigatedDamage(amount):amount;playerState.health=Math.max(0,playerState.health-hit);const overlay=document.querySelector("#damage-overlay");if(overlay){overlay.classList.remove("hit");void overlay.offsetWidth;overlay.classList.add("hit");}root.classList.remove("damage-shake");void root.offsetWidth;root.classList.add("damage-shake");updateVitals();showToast("SYSTEM INTEGRITY "+Math.ceil(playerState.health)+"%");if(playerState.health<=0){playerState.health=100;respawn();updateVitals();}}
 document.querySelector("#fire-button")?.addEventListener("pointerdown",e=>{e.preventDefault();fireBlaster();});
 
 
@@ -341,7 +343,7 @@ function releaseStick(){stickPointer=null;stickVector={x:0,y:0};stickKnob.style.
 for(const ev of ["pointerup","pointercancel","lostpointercapture"])stick.addEventListener(ev,releaseStick);
 document.querySelector("#interact-button").addEventListener("pointerdown",e=>{e.preventDefault();tryInteract();});
 let cameraYaw=0, cameraPitch=.16, dragging=false,lastPointer=null;
-addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();if(e.key.toLowerCase()==="e")tryInteract();});
+addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys.add(e.key.toLowerCase());if(e.key.toLowerCase()==="p"&&playerState.active)togglePause();if(e.key.toLowerCase()==="e")tryInteract();if(e.key.toLowerCase()==="i")phase5.openPanel();});
 addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
 let touchMovePointer=null,touchMoveOrigin=null;
 function pointerGamePoint(e){const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;return rotated?{x:e.clientY,y:-e.clientX}:{x:e.clientX,y:e.clientY};}
@@ -424,7 +426,7 @@ let lastEnergyDisplay=-1;
 const clock=new THREE.Clock();
 function update(dt,time){
   fireCooldown=Math.max(0,fireCooldown-dt);
-  playerState.energy=Math.min(100,playerState.energy+10*dt);
+  playerState.energy=Math.min(100,playerState.energy+10*dt*(phase5?phase5.energyMultiplier():1));
   const energyDisplay=Math.ceil(playerState.energy);
   if(energyDisplay!==lastEnergyDisplay){lastEnergyDisplay=energyDisplay;updateVitals();}
   enemies.forEach(enemy=>{
@@ -437,7 +439,7 @@ function update(dt,time){
   });
   for(let i=shots.length-1;i>=0;i--){
     const shot=shots[i];shot.mesh.position.addScaledVector(shot.velocity,dt);shot.life-=dt;let remove=shot.life<=0;
-    if(!shot.enemy){for(const enemy of enemies){if(enemy.alive&&shot.mesh.position.distanceTo(enemy.group.position.clone().add(new THREE.Vector3(0,.8,0)))<1){enemy.hp-=25+playerState.inventory.upgrades*8;remove=true;showToast("TARGET HIT · "+Math.max(0,enemy.hp)+" HP");if(enemy.hp<=0){enemy.alive=false;showToast("SECURITY UNIT DISABLED");}break;}}}
+    if(!shot.enemy){for(const enemy of enemies){if(enemy.alive&&shot.mesh.position.distanceTo(enemy.group.position.clone().add(new THREE.Vector3(0,.8,0)))<1){enemy.hp-=25+playerState.inventory.upgrades*8+(phase5?phase5.combatBonus():0);remove=true;showToast("TARGET HIT · "+Math.max(0,enemy.hp)+" HP");if(enemy.hp<=0){enemy.alive=false;showToast("SECURITY UNIT DISABLED");}break;}}}
     else if(shot.mesh.position.distanceTo(player.position.clone().add(new THREE.Vector3(0,1,0)))<.9){damagePlayer(12);remove=true;}
     if(remove){world.remove(shot.mesh);shot.mesh.geometry.dispose();shots.splice(i,1);}
   }
@@ -455,16 +457,17 @@ function update(dt,time){
   }
   if(!playerState.active||playerState.paused||playerState.won)return;
   phase4.update(dt,time);
+  phase5.update(dt,time);
   const {f,r}=axisInput();const forward=new THREE.Vector3(Math.sin(cameraYaw),0,-Math.cos(cameraYaw));const right=new THREE.Vector3(Math.cos(cameraYaw),0,Math.sin(cameraYaw));
   const dir=forward.multiplyScalar(f).add(right.multiplyScalar(r));if(dir.lengthSq()>1)dir.normalize();
-  const sprint=keys.has("shift")?1.28:1;const speed=7.4*sprint;
+  const sprint=keys.has("shift")?1.28:1;const speed=7.4*sprint*(phase5?phase5.speedMultiplier():1);
   const targetVX=dir.x*speed,targetVZ=dir.z*speed;
   const accel=playerState.grounded?19:8;
   playerState.vx=THREE.MathUtils.damp(playerState.vx,targetVX,accel,dt);
   playerState.vz=THREE.MathUtils.damp(playerState.vz,targetVZ,accel,dt);
   if(playerState.grounded)coyoteTimer=.12;else coyoteTimer=Math.max(0,coyoteTimer-dt);
   if(keys.has(" ")||keys.has("space")||jumpQueued)jumpBuffer=.14;else jumpBuffer=Math.max(0,jumpBuffer-dt);
-  if(jumpBuffer>0&&coyoteTimer>0){playerState.vy=JUMP_SPEED;playerState.grounded=false;coyoteTimer=0;jumpBuffer=0;}
+  if(jumpBuffer>0&&coyoteTimer>0){playerState.vy=JUMP_SPEED*(phase5?phase5.jumpMultiplier():1);playerState.grounded=false;coyoteTimer=0;jumpBuffer=0;}
   jumpQueued=false;
   const oldY=playerState.y;playerState.vy-=GRAVITY*dt;
   let nextX=playerState.x+playerState.vx*dt,nextZ=playerState.z+playerState.vz*dt;
@@ -484,12 +487,12 @@ function update(dt,time){
   arms.forEach((limb,i)=>limb.rotation.x=i===0?-swing*.8:swing*.8);
   feet[0].rotation.x=swing*.7;feet[1].rotation.x=-swing*.7;
   if(!playerState.grounded){legs.forEach((limb,i)=>limb.rotation.x=i===0?-.35:.35);arms.forEach(limb=>limb.rotation.x=-.45);}
-  cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
+  cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;phase5.collect("core");if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
   drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){damagePlayer(10);d.group.position.set(d.baseX,1.4,d.baseZ);}});
   if(sideMissionState==="available"&&player.position.distanceTo(sideBeacon.position)<2.5){sideMissionState="active";sideMissionTime=25;showToast("OPTIONAL MISSION: DATA RECOVERY · 25 SEC");}
   if(sideMissionState==="active"){sideMissionTime=Math.max(0,sideMissionTime-dt);const timer=document.querySelector("#side-mission");if(timer)timer.textContent="OPTIONAL DATA RECOVERY · "+Math.ceil(sideMissionTime)+"s · "+sideMissionCount+"/2";if(sideMissionTime<=0){sideMissionState="failed";showToast("OPTIONAL MISSION FAILED");}}
   extraFragments.forEach(f=>{if(!f.taken&&player.position.distanceTo(f.mesh.position)<1.2){f.taken=true;f.mesh.visible=false;if(sideMissionState==="active"){sideMissionCount++;if(sideMissionCount>=2){sideMissionState="complete";showToast("OPTIONAL MISSION COMPLETE");}}else showToast("DATA FRAGMENT ACQUIRED");updateHUD();}});
-  inventoryItems.forEach(item=>{if(!item.taken&&player.position.distanceTo(item.mesh.position)<1.25){item.taken=true;item.mesh.visible=false;playerState.inventory[item.type==="card"?"cards":item.type==="upgrade"?"upgrades":item.type==="recording"?"recordings":"rare"]++;if(item.type==="upgrade")playerState.energy=Math.min(100,playerState.energy+35);showToast(({card:"ACCESS CARD ACQUIRED",upgrade:"BLASTER MOD ACQUIRED",recording:"MEMORY LOG RECOVERED",rare:"RARE DATA RELIC ACQUIRED"})[item.type]);updateHUD();updateVitals();}});
+  inventoryItems.forEach(item=>{if(!item.taken&&player.position.distanceTo(item.mesh.position)<1.25){item.taken=true;item.mesh.visible=false;playerState.inventory[item.type==="card"?"cards":item.type==="upgrade"?"upgrades":item.type==="recording"?"recordings":"rare"]++;phase5.collect(item.type);if(item.type==="upgrade")playerState.energy=Math.min(100,playerState.energy+35);showToast(({card:"ACCESS CARD ACQUIRED",upgrade:"BLASTER MOD ACQUIRED",recording:"MEMORY LOG RECOVERED",rare:"RARE DATA RELIC ACQUIRED"})[item.type]);updateHUD();updateVitals();}});
   laserDamageTimer=Math.max(0,laserDamageTimer-dt);if(!laserRedirected&&Math.abs(playerState.z+40)<.7&&Math.abs(playerState.x)<7&&laserDamageTimer<=0){damagePlayer(7);laserDamageTimer=.8;}
   cameras.forEach(cameraUnit=>{cameraUnit.group.rotation.y=cameraUnit.disabled?0:Math.sin(time*.65+cameraUnit.group.position.z)*.55;if(!cameraUnit.disabled&&player.position.distanceTo(cameraUnit.group.position)<4&&cameraUnit.alarm<=0){damagePlayer(4);cameraUnit.alarm=2.5;}cameraUnit.alarm=Math.max(0,cameraUnit.alarm-dt);});
   let nearTerminal=false;for(const item of interactables){if(!item.solved&&player.position.distanceTo(item.group.position)<3.1)nearTerminal=true;}
