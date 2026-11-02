@@ -38,7 +38,9 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   const marker=(pos,color)=>{const g=new T.Group();g.position.copy(pos);const r=new T.Mesh(new T.TorusGeometry(1.7,.12,10,32),color);g.add(r);const beam=new T.Mesh(new T.CylinderGeometry(.08,.08,4,8),color);beam.position.y=2;g.add(beam);challengeGroup.add(g);return g;};
   const raceGate=marker(raceStart,accent),finishGate=marker(raceEnd,cyan);finishGate.visible=false;
   const bonusGate=marker(new T.Vector3(0,1.5,-108),gold);bonusGate.visible=false;
-  let raceAvailable=true, raceComplete=false, finishToast=false, bonusActive=false, bonusTime=0, bonusCount=0;\n  const bonusTokens=[];\n  for(const z of [-94,-101,-106]){const token=new T.Mesh(new T.OctahedronGeometry(.38,1),gold);token.position.set(0,1.1,z);challengeGroup.add(token);bonusTokens.push({mesh:token,taken:false});}
+  let raceAvailable=true, raceComplete=false, finishToast=false, bonusActive=false, bonusTime=0, bonusCount=0;
+  const bonusTokens=[];
+  for(const z of [-94,-101,-106]){const token=new T.Mesh(new T.OctahedronGeometry(.38,1),gold);token.position.set(0,1.1,z);challengeGroup.add(token);bonusTokens.push({mesh:token,taken:false});}
   function openDB(){
     return new Promise(resolve=>{
       if(!("indexedDB" in window)){resolve(null);return;}
@@ -79,7 +81,8 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     data.achievements.push(id);data.credits+=2;
     const a=achievements.find(x=>x[0]===id);showToast("ACHIEVEMENT UNLOCKED · "+(a?a[1]:id)+" · +2 CREDITS");renderPanel();persist();
   }
-  function updateRestorationVisuals(){restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});}\n  function collect(type){
+  function updateRestorationVisuals(){restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});}
+  function collect(type){
     if(!data.inventory.includes(type))data.inventory.push(type);
     if(data.inventory.length>=4)award("collector");
     if(type==="core")award("first_core");
@@ -93,9 +96,17 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
     if(data.credits<cost){showToast("NEED "+cost+" UPGRADE CREDITS");return;}
     data.credits-=cost;data.levels[name]++;showToast(labels[name]+" UPGRADED · LEVEL "+data.levels[name]);persist();renderPanel();updateVitals();
   }
-  const suitMat=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:.9,metalness:.4});\n  const visorMat=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:1.5});\n  const wearables=new T.Group();player.add(wearables);\n  const chestBadge=new T.Mesh(new T.BoxGeometry(.34,.4,.045),suitMat);chestBadge.position.set(0,1.22,-.34);wearables.add(chestBadge);\n  const visor=new T.Mesh(new T.BoxGeometry(.34,.075,.035),visorMat);visor.position.set(0,1.98,-.25);wearables.add(visor);\n  const halo=new T.Mesh(new T.TorusGeometry(.42,.055,8,28),gold);halo.position.set(0,2.34,0);halo.visible=false;wearables.add(halo);\n  const trail=new T.Mesh(new T.TorusGeometry(.55,.035,8,28),accent);trail.rotation.x=Math.PI/2;trail.position.set(0,.12,.2);trail.visible=false;wearables.add(trail);\n  function applyCustomization(){suitMat.color.setHex(data.outfit==="stealth"?0x56627c:data.outfit==="pulse"?0x1b4560:0x45f6ef);suitMat.emissive.setHex(data.outfit==="stealth"?0x1a2538:data.outfit==="pulse"?0x087d88:0x087d88);visorMat.color.set(data.visor);visorMat.emissive.set(data.visor);halo.visible=data.accessory==="halo";trail.visible=data.accessory==="trail";}\n  function outfit(name){data.outfit=name;applyCustomization();showToast("SUIT EQUIPPED · "+name.toUpperCase());persist();}
-  function setVisor(color){data.visor=color;showToast("VISOR COLOR UPDATED");persist();}
-  function setAccessory(name){data.accessory=name;showToast("ACCESSORY · "+name.toUpperCase());persist();}
+  const suitMat=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:.9,metalness:.4});
+  const visorMat=new T.MeshStandardMaterial({color:0x45f6ef,emissive:0x087d88,emissiveIntensity:1.5});
+  const wearables=new T.Group();player.add(wearables);
+  const chestBadge=new T.Mesh(new T.BoxGeometry(.34,.4,.045),suitMat);chestBadge.position.set(0,1.22,-.34);wearables.add(chestBadge);
+  const visor=new T.Mesh(new T.BoxGeometry(.34,.075,.035),visorMat);visor.position.set(0,1.98,-.25);wearables.add(visor);
+  const halo=new T.Mesh(new T.TorusGeometry(.42,.055,8,28),gold);halo.position.set(0,2.34,0);halo.visible=false;wearables.add(halo);
+  const trail=new T.Mesh(new T.TorusGeometry(.55,.035,8,28),accent);trail.rotation.x=Math.PI/2;trail.position.set(0,.12,.2);trail.visible=false;wearables.add(trail);
+  function applyCustomization(){suitMat.color.setHex(data.outfit==="stealth"?0x56627c:data.outfit==="pulse"?0x1b4560:0x45f6ef);suitMat.emissive.setHex(data.outfit==="stealth"?0x1a2538:data.outfit==="pulse"?0x087d88:0x087d88);visorMat.color.set(data.visor);visorMat.emissive.set(data.visor);halo.visible=data.accessory==="halo";trail.visible=data.accessory==="trail";}
+  function outfit(name){data.outfit=name;applyCustomization();showToast("SUIT EQUIPPED · "+name.toUpperCase());persist();}
+  function setVisor(color){data.visor=color;applyCustomization();showToast("VISOR COLOR UPDATED");persist();}
+  function setAccessory(name){data.accessory=name;applyCustomization();showToast("ACCESSORY · "+name.toUpperCase());persist();}
   function mitigatedDamage(amount){return Math.max(1,amount*(1-level("shield")*.12));}
   function speedMultiplier(){return 1+level("speed")*.09;}
   function jumpMultiplier(){return 1+level("jump")*.08;}
