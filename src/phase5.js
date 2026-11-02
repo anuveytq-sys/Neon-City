@@ -4,7 +4,7 @@ import * as THREE from "three";
    All data is local to the player's browser; no account or paid service is required. */
 export function installPhaseFive({THREE:T,scene,world,player,state,cores,platforms,showToast,updateHUD,updateVitals}) {
   const STORE="neon-velocity-phase5-v1";
-  const defaults={levels:{speed:0,jump:0,energy:0,shield:0,hacking:0,combat:0,recovery:0},credits:0,inventory:[],achievements:[],outfit:"runner",visor:"#45f6ef",accessory:"none",district:0,checkpoint:null,challenge:{raceBest:null,timeTrialBest:null,hiddenFound:0,environmentSolved:0,bonusUnlocked:false,bonusComplete:false},restoration:0};
+  const defaults={levels:{speed:0,jump:0,energy:0,shield:0,hacking:0,combat:0,recovery:0},credits:0,inventory:[],achievements:[],outfit:"runner",visor:"#45f6ef",accessory:"none",district:0,checkpoint:null,challenge:{raceBest:null,timeTrialBest:null,hiddenFound:0,environmentSolved:0,bonusUnlocked:false,bonusComplete:false,relicCollected:false},restoration:0};
   let data=structuredClone(defaults), panel=null, challengeActive=null, challengeTime=0, autoSaveTimer=0, lastCheckpoint="";
   const costs={speed:2,jump:2,energy:2,shield:3,hacking:2,combat:3,recovery:2};
   const labels={speed:"SPEED",jump:"JUMP",energy:"ENERGY",shield:"SHIELD",hacking:"HACKING",combat:"COMBAT",recovery:"RECOVERY CORES"};
@@ -86,6 +86,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,platfor
     if(saved.checkpoint&&Number.isFinite(saved.checkpoint.x))state.checkpoint={...saved.checkpoint};
     cacheObjects.forEach(c=>{const group=cacheObjects.filter(x=>x.kind===c.kind);const index=group.indexOf(c);const foundCount=c.kind==="hidden"?data.challenge.hiddenFound:data.challenge.environmentSolved;if(index<foundCount){c.found=true;c.group.visible=false;}});
     raceComplete=data.challenge.raceBest!==null;
+    areaRelicTaken=!!data.challenge.relicCollected;areaRelic.visible=!areaRelicTaken;
     bonusGate.visible=data.challenge.bonusUnlocked&&!data.challenge.bonusComplete;
     bonusTokens.forEach(t=>{t.taken=data.challenge.bonusComplete;t.mesh.visible=false;});
     applyCustomization();updateRestorationVisuals();updateHUD();updateVitals();renderPanel();
@@ -161,7 +162,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,platfor
   function update(dt,time){
     autoSaveTimer+=dt;if(autoSaveTimer>12){autoSaveTimer=0;persist();}
     updateRestorationVisuals();
-    if(newAreaGroup.visible&&!areaRelicTaken){areaRelic.rotation.y+=dt*1.5;if(player.position.distanceTo(areaRelic.position)<1.5){areaRelicTaken=true;areaRelic.visible=false;data.credits+=3;collect("district relic");showToast("SECRET DISTRICT RELIC RECOVERED · +3 CREDITS");}}
+    if(newAreaGroup.visible&&!areaRelicTaken){areaRelic.rotation.y+=dt*1.5;if(player.position.distanceTo(areaRelic.position)<1.5){areaRelicTaken=true;data.challenge.relicCollected=true;areaRelic.visible=false;data.credits+=3;collect("district relic");showToast("SECRET DISTRICT RELIC RECOVERED · +3 CREDITS");}}
     if(data.restoration>=4&&!newAreaToast&&player.position.distanceTo(newAreaGate.position)<4){newAreaToast=true;showToast("RESTORED TRANSIT ACCESS OPEN · NEW CITY ROUTE AVAILABLE");}
     transitPods.forEach((p,i)=>{p.position.set(Math.sin(time*.35+i*Math.PI)*2.5,.9,-12-((time*3+i*45)%92));p.rotation.y=Math.PI;});
     for(const c of cacheObjects){
