@@ -168,7 +168,8 @@ function updateVitals(){
  if(healthValue)healthValue.textContent=Math.ceil(playerState.health);
  if(energyValue)energyValue.textContent=Math.ceil(playerState.energy);
 }
-function damagePlayer(amount){if(!playerState.active||playerState.paused)return;const hit=phase5?phase5.mitigatedDamage(amount):amount;playerState.health=Math.max(0,playerState.health-hit);const overlay=document.querySelector("#damage-overlay");if(overlay){overlay.classList.remove("hit");void overlay.offsetWidth;overlay.classList.add("hit");}root.classList.remove("damage-shake");void root.offsetWidth;root.classList.add("damage-shake");updateVitals();showToast("SYSTEM INTEGRITY "+Math.ceil(playerState.health)+"%");if(playerState.health<=0){playerState.health=100;respawn();updateVitals();}}
+let hitFeedbackCooldown=0;
+function damagePlayer(amount){if(!playerState.active||playerState.paused)return;const hit=phase5?phase5.mitigatedDamage(amount):amount;playerState.health=Math.max(0,playerState.health-hit);if(hitFeedbackCooldown<=0){const overlay=document.querySelector("#damage-overlay");if(overlay){overlay.classList.remove("hit");void overlay.offsetWidth;overlay.classList.add("hit");}root.classList.remove("damage-shake");void root.offsetWidth;root.classList.add("damage-shake");hitFeedbackCooldown=.42;showToast("SYSTEM INTEGRITY "+Math.ceil(playerState.health)+"%");}updateVitals();if(playerState.health<=0){playerState.health=100;respawn();updateVitals();}}
 document.querySelector("#fire-button")?.addEventListener("pointerdown",e=>{e.preventDefault();fireBlaster();});
 
 
@@ -431,6 +432,7 @@ function axisInput(){const f=stickVector.y!==0?-stickVector.y:(keys.has("w")||ke
 let lastEnergyDisplay=-1;
 const clock=new THREE.Clock();
 function update(dt,time){
+  hitFeedbackCooldown=Math.max(0,hitFeedbackCooldown-dt);
   fireCooldown=Math.max(0,fireCooldown-dt);
   playerState.energy=Math.min(100,playerState.energy+10*dt*(phase5?phase5.energyMultiplier():1));
   const energyDisplay=Math.ceil(playerState.energy);
