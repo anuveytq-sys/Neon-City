@@ -334,7 +334,7 @@ let bridgeCollisionEnabled=false,liftCollisionEnabled=false;
 const keys=new Set(), touch=new Set();
 let stickVector={x:0,y:0},stickPointer=null;
 const stick=document.querySelector("#move-stick"),stickKnob=document.querySelector("#stick-knob");
-function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}stickVector={x:THREE.MathUtils.clamp(dx/max,-1,1),y:THREE.MathUtils.clamp(dy/max,-1,1)};const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;const localX=rotated?dy:dx,localY=rotated?-dx:dy;stickKnob.style.transform=`translate(${localX}px,${localY}px)`;}
+function updateStick(e){const rect=stick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=Math.min(rect.width,rect.height)*.34,len=Math.hypot(dx,dy);if(len>max){dx=dx/len*max;dy=dy/len*max;}const rotated=isTouch&&innerHeight>innerWidth&&innerWidth<=800;const inputX=rotated?dy:dx,inputY=rotated?-dx:dy;stickVector={x:THREE.MathUtils.clamp(inputX/max,-1,1),y:THREE.MathUtils.clamp(inputY/max,-1,1)};const localX=inputX,localY=inputY;stickKnob.style.transform=`translate(${localX}px,${localY}px)`;}
 stick.addEventListener("pointerdown",e=>{e.preventDefault();stickPointer=e.pointerId;stick.setPointerCapture(e.pointerId);updateStick(e);});
 stick.addEventListener("pointermove",e=>{if(e.pointerId===stickPointer)updateStick(e);});
 function releaseStick(){stickPointer=null;stickVector={x:0,y:0};stickKnob.style.transform="translate(0,0)";}
