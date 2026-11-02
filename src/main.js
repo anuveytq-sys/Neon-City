@@ -123,7 +123,7 @@ for(const side of [-1,1]){
 const footGeo=new THREE.BoxGeometry(.27,.17,.43);const feet=[];
 for(const x of [-.2,.2]){const f=new THREE.Mesh(footGeo,bootMat);f.position.set(x,.105,-.055);f.castShadow=true;player.add(f);feet.push(f);}
 
-const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,y:0,z:0},active:false,paused:false,won:false};
+const playerState={x:0,y:0,z:0,vx:0,vy:0,vz:0,grounded:true,cores:0,checkpoint:{x:0,y:0,z:0},district:-1,active:false,paused:false,won:false};
 player.position.set(0,0,1);
 
 // Phase 3 combat: non-graphic energy blaster, enemy health, cooldown and recharge.
@@ -384,7 +384,7 @@ let toastTimer;
 function showToast(text){toast.textContent=text;toast.style.opacity="1";clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity="0",1400);}
 function updateHUD(){const restored=interactables.filter(item=>item.solved).length;coreCount.textContent=String(playerState.cores).padStart(2,"0")+" / 08";const inventoryLabel=document.querySelector("#inventory-count");if(inventoryLabel)inventoryLabel.textContent="CARD "+playerState.inventory.cards+" · MOD "+playerState.inventory.upgrades+" · LOG "+playerState.inventory.recordings+" · RARE "+playerState.inventory.rare;const sideLabel=document.querySelector("#side-mission");if(sideLabel)sideLabel.textContent=sideMissionState==="available"?"OPTIONAL: FIND THE PINK DATA BEACON":sideMissionState==="active"?"OPTIONAL DATA RECOVERY · "+Math.ceil(sideMissionTime)+"s · "+sideMissionCount+"/2":sideMissionState==="complete"?"OPTIONAL MISSION COMPLETE":"OPTIONAL MISSION EXPIRED";progressFill.style.width=((playerState.cores/8)*70+(restored/3)*30)+"%";objective.textContent=restored<3?"Restore city systems · "+restored+" / 3 networks online":playerState.cores<8?"Power cells secured · "+playerState.cores+" / 8":"All systems online · reach the extraction portal";}
 async function requestLandscape(){try{if(screen.orientation?.lock)await screen.orientation.lock("landscape");}catch(_error){/* iOS Safari and some browsers use the CSS-rotated landscape fallback. */}}
-function startGame(){requestLandscape();player.position.set(0,0,1);playerState.x=0;playerState.y=0;playerState.z=1;playerState.vx=playerState.vy=playerState.vz=0;playerState.grounded=true;playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;cameraYaw=0;cameraPitch=.16;const followDistance=isTouch?8.2:9.2;camera.position.set(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);camera.updateProjectionMatrix();resizeGame();}
+function startGame(savedSpawn){requestLandscape();const spawn=savedSpawn||{x:0,y:0,z:1};player.position.set(spawn.x,spawn.y,spawn.z);playerState.x=spawn.x;playerState.y=spawn.y;playerState.z=spawn.z;playerState.district=-1;playerState.vx=playerState.vy=playerState.vz=0;playerState.grounded=true;playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};title.classList.add("hidden");pauseScreen.classList.add("hidden");winScreen.classList.add("hidden");hud.classList.remove("hidden");if(isTouch)touchControls.classList.remove("hidden");playerState.active=true;playerState.paused=false;playerState.won=false;cameraYaw=0;cameraPitch=.16;const followDistance=isTouch?8.2:9.2;camera.position.set(player.position.x+Math.sin(cameraYaw)*followDistance,player.position.y+4.3+cameraPitch*5.2,player.position.z+Math.cos(cameraYaw)*followDistance);camera.lookAt(player.position.x,player.position.y+1.15,player.position.z-1.15);camera.updateProjectionMatrix();resizeGame();}
 function togglePause(force){if(!playerState.active)return;playerState.paused=force??!playerState.paused;pauseScreen.classList.toggle("hidden",!playerState.paused);}
 function restart(){
  playerState.cores=0;playerState.health=100;playerState.energy=100;playerState.inventory={cards:0,upgrades:0,recordings:0,rare:0};
@@ -402,7 +402,8 @@ function restart(){
  shots.forEach(shot=>world.remove(shot.mesh));shots.length=0;
  puzzlePanel.classList.add("hidden");puzzleTarget=null;phase4Entered=false;phase4.reset();playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
-document.querySelector("#play-button").addEventListener("click",startGame);
+document.querySelector("#play-button").addEventListener("click",()=>startGame());
+document.querySelector("#continue-button")?.addEventListener("click",()=>{const saved=phase5.getSavedState();startGame(saved.checkpoint||undefined);if(saved.district>=0){phase4Entered=true;phase4.enterDistrict(saved.district);if(saved.checkpoint){playerState.x=saved.checkpoint.x;playerState.y=saved.checkpoint.y;playerState.z=saved.checkpoint.z;playerState.checkpoint={...saved.checkpoint};player.position.set(playerState.x,playerState.y,playerState.z);}}});
 document.querySelector("#progress-button")?.addEventListener("click",()=>phase5.openPanel());
 root.addEventListener("animationend",e=>{if(e.animationName==="damageShake")root.classList.remove("damage-shake");});
 document.querySelector("#pause-button").addEventListener("click",()=>togglePause());
