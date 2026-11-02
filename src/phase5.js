@@ -150,7 +150,9 @@ export function installPhaseFive({THREE:T,scene,world,player,state,showToast,upd
   }
   function update(dt,time){
     autoSaveTimer+=dt;if(autoSaveTimer>12){autoSaveTimer=0;persist();}
-    updateRestorationVisuals();\n    transitPods.forEach((p,i)=>{p.position.set(Math.sin(time*.35+i*Math.PI)*2.5,.9,-12-((time*3+i*45)%92));p.rotation.y=Math.PI;});\n    for(const c of cacheObjects){
+    updateRestorationVisuals();
+    transitPods.forEach((p,i)=>{p.position.set(Math.sin(time*.35+i*Math.PI)*2.5,.9,-12-((time*3+i*45)%92));p.rotation.y=Math.PI;});
+    for(const c of cacheObjects){
       c.group.rotation.y+=dt*.8;c.group.position.y=c.baseY+Math.sin(time*2+c.baseY)*.12;
       if(c.kind!=="signal"&&!c.found&&player.position.distanceTo(c.group.position)<1.5){
         c.found=true;c.group.visible=false;
