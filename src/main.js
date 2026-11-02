@@ -143,7 +143,7 @@ function createEnemy(type,x,z,hp=30){
 createEnemy("ground", -5,-34,35);createEnemy("ground",5,-66,40);
 createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
 const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals,damagePlayer,getHackingBonus:()=>phase5.hackingBonus(),onBossDefeated:()=>phase5.onBossDefeated(),onDistrictRestored:()=>phase5.onDistrictRestored()});
-const phase5=installPhaseFive({THREE,scene,world,player,state:playerState,showToast,updateHUD,updateVitals});
+const phase5=installPhaseFive({THREE,scene,world,player,state:playerState,cores,showToast,updateHUD,updateVitals});
 let phase4Entered=false;
 function fireBlaster(){
  if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
