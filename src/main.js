@@ -142,7 +142,7 @@ function createEnemy(type,x,z,hp=30){
 }
 createEnemy("ground", -5,-34,35);createEnemy("ground",5,-66,40);
 createEnemy("turret",6,-43,45);createEnemy("elite",0,-101,110);
-const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals,damagePlayer});
+const phase4=installPhaseFour({THREE,scene,world,player,state:playerState,platforms,shots,showToast,updateVitals,damagePlayer,onBossDefeated:()=>phase5.onBossDefeated(),onDistrictRestored:()=>phase5.onDistrictRestored()});
 const phase5=installPhaseFive({THREE,scene,world,player,state:playerState,showToast,updateHUD,updateVitals});
 function fireBlaster(){
  if(!playerState.active||playerState.paused||playerState.energy<12||fireCooldown>0)return;
@@ -398,6 +398,8 @@ function restart(){
  puzzlePanel.classList.add("hidden");puzzleTarget=null;phase4.reset();playerState.checkpoint={x:0,y:0,z:1};respawn();updateHUD();updateVitals();startGame();
 }
 document.querySelector("#play-button").addEventListener("click",startGame);
+document.querySelector("#progress-button")?.addEventListener("click",()=>phase5.openPanel());
+root.addEventListener("animationend",e=>{if(e.animationName==="damageShake")root.classList.remove("damage-shake");});
 document.querySelector("#pause-button").addEventListener("click",()=>togglePause());
 document.querySelector("#resume-button").addEventListener("click",()=>togglePause(false));
 document.querySelector("#restart-button").addEventListener("click",restart);
@@ -487,7 +489,7 @@ function update(dt,time){
   arms.forEach((limb,i)=>limb.rotation.x=i===0?-swing*.8:swing*.8);
   feet[0].rotation.x=swing*.7;feet[1].rotation.x=-swing*.7;
   if(!playerState.grounded){legs.forEach((limb,i)=>limb.rotation.x=i===0?-.35:.35);arms.forEach(limb=>limb.rotation.x=-.45);}
-  cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;phase5.collect("core");if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
+  cores.forEach(c=>{if(c.active&&player.position.distanceTo(c.group.position)<1.55){c.active=false;c.group.visible=false;playerState.cores++;phase5.collect("core");playerState.health=Math.min(100,playerState.health+phase5.recoveryBonus()*3);playerState.energy=Math.min(100,playerState.energy+10+phase5.recoveryBonus()*2);updateVitals();if(playerState.cores%2===0)playerState.checkpoint={x:playerState.x,y:playerState.y,z:playerState.z};updateHUD();showToast("ENERGY CORE RECOVERED");}});
   drones.forEach(d=>{const distance=player.position.distanceTo(d.group.position);d.group.userData.alert=distance<5;d.group.scale.setScalar(distance<5?1.18:1);if(distance<1.15){damagePlayer(10);d.group.position.set(d.baseX,1.4,d.baseZ);}});
   if(sideMissionState==="available"&&player.position.distanceTo(sideBeacon.position)<2.5){sideMissionState="active";sideMissionTime=25;showToast("OPTIONAL MISSION: DATA RECOVERY · 25 SEC");}
   if(sideMissionState==="active"){sideMissionTime=Math.max(0,sideMissionTime-dt);const timer=document.querySelector("#side-mission");if(timer)timer.textContent="OPTIONAL DATA RECOVERY · "+Math.ceil(sideMissionTime)+"s · "+sideMissionCount+"/2";if(sideMissionTime<=0){sideMissionState="failed";showToast("OPTIONAL MISSION FAILED");}}
