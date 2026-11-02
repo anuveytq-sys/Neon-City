@@ -70,6 +70,15 @@ export function installPhaseFour({THREE: T, scene, world, player, state, platfor
     const halo=new T.Mesh(new T.TorusGeometry(size*1.25,.13,8,32),gm);halo.position.y=size;halo.rotation.x=Math.PI/2;bossGroup.add(halo);
     bosses.push({group:bossGroup,shell,eye,halo,world:i,hp:i===5?420:100,maxHp:i===5?420:100,phase:0,cooldown:2,defeated:false,attack:0,closeAttack:0});
   }
+  // Invisible safety deck fills only the tiny visual road seams on the original route.
+  // It sits below the visible road so the player never falls through a one-pixel/gap seam.
+  platforms.push({minX:-10,maxX:10,minY:-1.3,maxY:-.72,minZ:-118,maxZ:4});
+  // Remove the six unused square road obstacles from the original route; nothing else is touched.
+  const unusedRoadSquares=[[ -5,-19 ],[ 5,-28 ],[ -4,-42 ],[ 4,-60 ],[ -5,-76 ],[ 5,-94 ]];
+  world.traverse(obj=>{
+    if(!obj.isMesh)return;
+    for(const [x,z] of unusedRoadSquares){if(Math.abs(obj.position.x-x)<.01&&Math.abs(obj.position.z-z)<.01&&obj.geometry?.parameters?.width===3.4&&obj.geometry?.parameters?.height===.45&&obj.geometry?.parameters?.depth===3.4){obj.visible=false;obj.userData.phase6RemovedRoadSquare=true;break;}}
+  });
   function enter(index){
     active=index;state.district=index;
     districts.forEach((d,i)=>{d.visible=i===index;});
