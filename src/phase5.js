@@ -2,7 +2,7 @@ import * as THREE from "three";
 
 /* Phase 5: persistent progression, customization, challenges and city restoration.
    All data is local to the player's browser; no account or paid service is required. */
-export function installPhaseFive({THREE:T,scene,world,player,state,cores,showToast,updateHUD,updateVitals}) {
+export function installPhaseFive({THREE:T,scene,world,player,state,cores,platforms,showToast,updateHUD,updateVitals}) {
   const STORE="neon-velocity-phase5-v1";
   const defaults={levels:{speed:0,jump:0,energy:0,shield:0,hacking:0,combat:0,recovery:0},credits:0,inventory:[],achievements:[],outfit:"runner",visor:"#45f6ef",accessory:"none",district:0,checkpoint:null,challenge:{raceBest:null,timeTrialBest:null,hiddenFound:0,environmentSolved:0,bonusUnlocked:false,bonusComplete:false},restoration:0};
   let data=structuredClone(defaults), panel=null, challengeActive=null, challengeTime=0, autoSaveTimer=0, lastCheckpoint="";
@@ -39,6 +39,12 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,showToa
   const raceGate=marker(raceStart,accent),finishGate=marker(raceEnd,cyan);finishGate.visible=false;
   const bonusGate=marker(new T.Vector3(0,1.5,-108),gold);bonusGate.visible=false;
   const newAreaGate=marker(new T.Vector3(8,1.5,-88),cyan);newAreaGate.visible=false;
+  const newAreaGroup=new T.Group();newAreaGroup.visible=false;world.add(newAreaGroup);
+  const areaFloor=new T.Mesh(new T.BoxGeometry(14,1.2,24),new T.MeshStandardMaterial({color:0x1a2940,metalness:.25,roughness:.65}));areaFloor.position.set(25,-.65,-88);newAreaGroup.add(areaFloor);
+  const areaBridge=new T.Mesh(new T.BoxGeometry(11,.5,4),new T.MeshStandardMaterial({color:0x18364a,emissive:0x063b4a}));areaBridge.position.set(13.5,-.35,-88);newAreaGroup.add(areaBridge);
+  for(let i=0;i<3;i++){const tower=new T.Mesh(new T.BoxGeometry(3,7+i*2,4),new T.MeshStandardMaterial({color:0x202b46,emissive:0x091b35}));tower.position.set(21+i*4.5,3.5+i,-83-i*5);newAreaGroup.add(tower);const strip=new T.Mesh(new T.BoxGeometry(3.05,.1,.08),i%2?accent:cyan);strip.position.set(21+i*4.5,5+i,-85.05-i*5);newAreaGroup.add(strip);}
+  const areaRelic=new T.Mesh(new T.OctahedronGeometry(.48,1),gold);areaRelic.position.set(25,1.2,-88);newAreaGroup.add(areaRelic);
+  let areaCollidersAdded=false,areaRelicTaken=false;
   const transitGroup=new T.Group();transitGroup.visible=false;world.add(transitGroup);const transitPods=[];
   for(let i=0;i<2;i++){const pod=new T.Group();const shell=new T.Mesh(new T.BoxGeometry(2.2,.65,3.8),new T.MeshStandardMaterial({color:0x1c3850,emissive:0x0b5260}));pod.add(shell);const windowMesh=new T.Mesh(new T.BoxGeometry(1.7,.28,.08),cyan);windowMesh.position.set(0,.12,-1.94);pod.add(windowMesh);transitGroup.add(pod);transitPods.push(pod);}
   const citizenGroup=new T.Group();citizenGroup.visible=false;world.add(citizenGroup);
@@ -89,7 +95,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,showToa
     data.achievements.push(id);data.credits+=2;
     const a=achievements.find(x=>x[0]===id);showToast("ACHIEVEMENT UNLOCKED · "+(a?a[1]:id)+" · +2 CREDITS");renderPanel();persist();
   }
-  function updateRestorationVisuals(){restorationGroup.visible=data.restoration>0;restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});transitGroup.visible=data.restoration>=2;citizenGroup.visible=data.restoration>=3;newAreaGate.visible=data.restoration>=4;newAreaGlow.intensity=data.restoration>=4?8:0;}
+  function updateRestorationVisuals(){restorationGroup.visible=data.restoration>0;restorationLights.forEach((r,i)=>{const active=i<data.restoration;r.g.visible=active;r.light.intensity=active?5:0;});transitGroup.visible=data.restoration>=2;citizenGroup.visible=data.restoration>=3;newAreaGate.visible=data.restoration>=4;newAreaGroup.visible=data.restoration>=4;newAreaGlow.intensity=data.restoration>=4?8:0;if(data.restoration>=4&&!areaCollidersAdded){platforms.push({minX:8,maxX:19,minY:-.6,maxY:-.1,minZ:-90,maxZ:-86},{minX:18,maxX:32,minY:-1.25,maxY:-.05,minZ:-100,maxZ:-76});areaCollidersAdded=true;}}
   function collect(type){
     if(!data.inventory.includes(type))data.inventory.push(type);
     if(data.inventory.length>=4)award("collector");
@@ -155,6 +161,7 @@ export function installPhaseFive({THREE:T,scene,world,player,state,cores,showToa
   function update(dt,time){
     autoSaveTimer+=dt;if(autoSaveTimer>12){autoSaveTimer=0;persist();}
     updateRestorationVisuals();
+    if(newAreaGroup.visible&&!areaRelicTaken){areaRelic.rotation.y+=dt*1.5;if(player.position.distanceTo(areaRelic.position)<1.5){areaRelicTaken=true;areaRelic.visible=false;data.credits+=3;collect("district relic");showToast("SECRET DISTRICT RELIC RECOVERED · +3 CREDITS");}}
     if(data.restoration>=4&&!newAreaToast&&player.position.distanceTo(newAreaGate.position)<4){newAreaToast=true;showToast("RESTORED TRANSIT ACCESS OPEN · NEW CITY ROUTE AVAILABLE");}
     transitPods.forEach((p,i)=>{p.position.set(Math.sin(time*.35+i*Math.PI)*2.5,.9,-12-((time*3+i*45)%92));p.rotation.y=Math.PI;});
     for(const c of cacheObjects){
